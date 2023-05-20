@@ -1,0 +1,62 @@
+{
+  "db": "PostgreSQL",
+  "b13bd71096b7a43366030b15270a1409fd3bd3209be1c13820c25ba497421326": {
+    "describe": {
+      "columns": [
+        {
+          "name": "time",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Text",
+          "Text",
+          "Text",
+          "Int2",
+          "Int2"
+        ]
+      }
+    },
+    "query": "INSERT INTO map_report(player_id, server_id, map_id, mode_id, bottom_tier, top_tier)\nSELECT $1, server.id, map.id, mode.id, $5, $6\nFROM server, map, mode\nWHERE server.name = $2 AND map.code = $3 AND mode.code = $4\nRETURNING map_report.time;"
+  },
+  "de1a4e8200bf92366f87071bb5cb45eefb1d3fb8125a667d37755db9f5a29ed7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "map",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "mode",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "count",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int2",
+          "Int2"
+        ]
+      }
+    },
+    "query": "WITH recent_maps AS (\n  SELECT map_id, mode_id, count(DISTINCT player_id) as count\n  FROM map_report\n  WHERE server_id = (SELECT id FROM server WHERE name = $1)\n    AND $2 <= top_tier\n    AND bottom_tier <= $3\n    AND time > now() - INTERVAL '1 hour'\n  GROUP BY map_id, mode_id\n)\nSELECT map.code as map, mode.code as mode, recent_maps.count\nFROM recent_maps\n  INNER JOIN mode ON recent_maps.mode_id = mode.id\n  INNER JOIN map ON recent_maps.map_id = map.id;\n"
+  }
+}

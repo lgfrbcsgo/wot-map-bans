@@ -1,0 +1,7 @@
+.idea
+.venv
+.env
+node_modules
+dist
+target
+/db/data
