@@ -1,5 +1,5 @@
 WITH current_server AS (
-  SELECT server_id, count(DISTINCT player_id) as count
+  SELECT server_id, count(DISTINCT user_id) as count
   FROM played_map
   WHERE time > now() - INTERVAL '1 hour'
   GROUP BY server_id

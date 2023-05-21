@@ -1,5 +1,5 @@
 WITH current_map AS (
-  SELECT map_id, mode_id, count(DISTINCT player_id) as count
+  SELECT map_id, mode_id, count(DISTINCT user_id) as count
   FROM played_map
   WHERE server_id = (SELECT id FROM server WHERE name = $1)
     AND $2 <= top_tier

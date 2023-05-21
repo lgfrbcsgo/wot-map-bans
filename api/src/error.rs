@@ -1,4 +1,3 @@
-use crate::api_client::ApiClientError;
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -6,6 +5,8 @@ use axum::Json;
 use serde_json::json;
 use thiserror::Error;
 use tracing::error;
+
+use crate::api_client::ApiClientError;
 
 pub type Result<T> = core::result::Result<T, ApiError>;
 
@@ -21,6 +22,8 @@ pub enum ApiError {
     QueryExtractor(#[from] QueryRejection),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+    #[error(transparent)]
+    JWT(#[from] jsonwebtoken::errors::Error),
 }
 
 impl IntoResponse for ApiError {

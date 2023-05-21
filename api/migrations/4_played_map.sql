@@ -1,6 +1,6 @@
 CREATE TABLE played_map (
   time        TIMESTAMPTZ NOT NULL DEFAULT now(),
-  player_id   INT         NOT NULL,
+  user_id     TEXT        NOT NULL,
   server_id   SMALLINT    NOT NULL,
   map_id      SMALLINT    NOT NULL,
   mode_id     SMALLINT    NOT NULL,

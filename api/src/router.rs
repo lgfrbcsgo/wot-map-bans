@@ -3,16 +3,17 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use sqlx::PgPool;
-use tracing::{info, warn};
+use tracing::warn;
 
-use crate::api_client::{ApiClient, AppId};
+use crate::api_client::ApiClient;
+use crate::auth::create_token;
 use crate::error::{ApiError, Result};
 use crate::model::{
-    AuthenticatePayload, CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery,
-    GetCurrentMapsResponse, GetCurrentServersResponse,
+    AuthenticatePayload, AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer,
+    GetCurrentMapsQuery, GetCurrentMapsResponse, GetCurrentServersResponse,
 };
 use crate::util::{ValidJson, ValidQuery};
-use crate::AppContext;
+use crate::{AppContext, AppId, ServerSecret};
 
 pub fn router() -> Router<AppContext> {
     Router::new()
@@ -28,7 +29,7 @@ async fn create_played_map(
 ) -> Result<StatusCode> {
     let row = sqlx::query_file!(
         "queries/insert_played_map.sql",
-        0,
+        "",
         payload.server,
         payload.map,
         payload.mode,
@@ -79,8 +80,9 @@ async fn get_current_servers(
 
 async fn authenticate(
     State(app_id): State<AppId>,
+    State(server_secret): State<ServerSecret>,
     ValidJson(payload): ValidJson<AuthenticatePayload>,
-) -> Result<Json<bool>> {
+) -> Result<Json<AuthenticateResponse>> {
     let api_client = ApiClient::new(payload.region, app_id);
 
     let token_details = api_client.extend_access_token(payload.access_token).await?;
@@ -89,7 +91,10 @@ async fn authenticate(
         .get_public_account_info(token_details.account_id)
         .await?;
 
-    info!("{:?}", account_info);
-
-    Ok(Json(200 <= account_info.statistics.all.battles))
+    if account_info.statistics.all.battles >= 200 {
+        let token = create_token(token_details.account_id, server_secret)?;
+        Ok(Json(AuthenticateResponse { token }))
+    } else {
+        Err(ApiError::Validation("Not enough battles."))
+    }
 }

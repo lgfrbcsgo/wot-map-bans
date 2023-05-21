@@ -1,10 +1,13 @@
+use std::collections::HashMap;
+
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use std::collections::HashMap;
 use thiserror::Error;
+
+use crate::AppId;
 
 pub type Result<T> = core::result::Result<T, ApiClientError>;
 
@@ -20,15 +23,6 @@ pub enum ApiClientError {
     UrlParse(#[from] url::ParseError),
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
-}
-
-#[derive(Debug, Clone)]
-pub struct AppId(String);
-
-impl AppId {
-    pub fn new(key: String) -> Self {
-        Self(key)
-    }
 }
 
 #[derive(Debug, Deserialize)]

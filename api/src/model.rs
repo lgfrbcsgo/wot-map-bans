@@ -139,3 +139,8 @@ impl Validate<ApiError> for AuthenticatePayload {
         Ok(())
     }
 }
+
+#[derive(Debug, Serialize)]
+pub struct AuthenticateResponse {
+    pub token: String,
+}
