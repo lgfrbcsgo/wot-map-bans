@@ -1,16 +1,18 @@
-use crate::error::ApiError;
-use axum::body::HttpBody;
+use std::fmt::Display;
+use std::future::Future;
+use std::time::Duration;
+
+use axum::body::{Body, HttpBody};
 use axum::extract::{FromRequest, FromRequestParts, Query};
 use axum::http::request::Parts;
 use axum::http::{HeaderName, HeaderValue, Request};
 use axum::{async_trait, BoxError, Json};
 use serde::de::DeserializeOwned;
-use std::fmt::Display;
-use std::future::Future;
-use std::time::Duration;
 use tower_http::request_id::{MakeRequestId, RequestId};
-use tracing::warn;
+use tracing::{error_span, warn, Span};
 use uuid::Uuid;
+
+use crate::error::ApiError;
 
 pub static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
@@ -28,6 +30,23 @@ impl MakeRequestId for UuidRequestId {
         let uuid = Uuid::new_v4().to_string();
         let header_value = HeaderValue::from_str(uuid.as_str()).ok()?;
         Some(header_value.into())
+    }
+}
+
+pub fn make_request_span(request: &Request<Body>) -> Span {
+    if let Some(request_id) = request.headers().get(&X_REQUEST_ID) {
+        error_span!("request",
+            request_id = ?request_id,
+            method = %request.method(),
+            uri = %request.uri(),
+            version = ?request.version(),
+        )
+    } else {
+        error_span!("request",
+            method = %request.method(),
+            uri = %request.uri(),
+            version = ?request.version(),
+        )
     }
 }
 

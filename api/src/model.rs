@@ -1,10 +1,12 @@
-use crate::error::ApiError;
-use crate::util::Validate;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
+use crate::error::ApiError;
+use crate::util::Validate;
+
 #[derive(Debug, Deserialize)]
-pub struct CreateMapReportPayload {
+pub struct PlayMapPayload {
     pub server: String,
     pub map: String,
     pub mode: String,
@@ -12,7 +14,7 @@ pub struct CreateMapReportPayload {
     pub top_tier: i16,
 }
 
-impl Validate for CreateMapReportPayload {
+impl Validate for PlayMapPayload {
     fn validate(&self) -> Result<(), ApiError> {
         if self.server.len() > 10 {
             Err(ApiError::Validation("Server name too long."))?;
@@ -44,13 +46,13 @@ impl Validate for CreateMapReportPayload {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct GetRecentMapsQuery {
+pub struct CurrentMapsQuery {
     pub server: String,
     pub min_tier: i16,
     pub max_tier: i16,
 }
 
-impl Validate for GetRecentMapsQuery {
+impl Validate for CurrentMapsQuery {
     fn validate(&self) -> Result<(), ApiError> {
         if self.server.len() > 10 {
             Err(ApiError::Validation("Server name too long."))?;
@@ -69,20 +71,20 @@ impl Validate for GetRecentMapsQuery {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct RecentMapRow {
+pub struct CurrentMap {
     pub map: String,
     pub mode: String,
     pub count: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetRecentMapsResponse {
+pub struct CurrentMapsResponse {
     pub total: usize,
     pub modes: HashMap<String, HashMap<String, usize>>,
 }
 
-impl GetRecentMapsResponse {
-    pub fn from_rows(rows: Vec<RecentMapRow>) -> Self {
+impl CurrentMapsResponse {
+    pub fn from_rows(rows: Vec<CurrentMap>) -> Self {
         let total = rows.len();
         let mut modes: HashMap<String, HashMap<String, usize>> = HashMap::new();
         for row in rows {
