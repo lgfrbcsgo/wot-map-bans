@@ -1,8 +1,9 @@
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
+use crate::auth::auth_middleware;
 use axum::extract::FromRef;
-use axum::Server;
+use axum::{middleware, Server};
 use dotenvy::dotenv;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -72,13 +73,17 @@ async fn main() {
     };
 
     let app = router()
-        .with_state(app_context)
+        .layer(middleware::from_fn_with_state(
+            app_context.server_secret.clone(),
+            auth_middleware,
+        ))
         .layer(TraceLayer::new_for_http().make_span_with(make_request_span))
         .layer(SetRequestIdLayer::new(
             X_REQUEST_ID.clone(),
             UuidRequestId::new(),
         ))
-        .layer(PropagateRequestIdLayer::new(X_REQUEST_ID.clone()));
+        .layer(PropagateRequestIdLayer::new(X_REQUEST_ID.clone()))
+        .with_state(app_context);
 
     let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
     info!("Starting server on {}.", addr);

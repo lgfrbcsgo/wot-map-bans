@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use tracing::warn;
 
 use crate::api_client::ApiClient;
-use crate::auth::create_token;
+use crate::auth::{create_token, TokenClaims};
 use crate::error::{ApiError, Result};
 use crate::model::{
     AuthenticatePayload, AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer,
@@ -25,11 +25,12 @@ pub fn router() -> Router<AppContext> {
 
 async fn create_played_map(
     State(pool): State<PgPool>,
+    claims: TokenClaims,
     ValidJson(payload): ValidJson<CreatePlayedMapPayload>,
 ) -> Result<StatusCode> {
     let row = sqlx::query_file!(
         "queries/insert_played_map.sql",
-        "",
+        claims.sub,
         payload.server,
         payload.map,
         payload.mode,
@@ -92,7 +93,7 @@ async fn authenticate(
         .await?;
 
     if account_info.statistics.all.battles >= 200 {
-        let token = create_token(token_details.account_id, server_secret)?;
+        let token = create_token(token_details.account_id, &server_secret)?;
         Ok(Json(AuthenticateResponse { token }))
     } else {
         Err(ApiError::Validation("Not enough battles."))

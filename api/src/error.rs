@@ -8,10 +8,12 @@ use tracing::error;
 
 use crate::api_client::ApiClientError;
 
-pub type Result<T> = core::result::Result<T, ApiError>;
+pub type Result<T, E = ApiError> = core::result::Result<T, E>;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
+    #[error("Unauthorized")]
+    Unauthorized,
     #[error("Validation error: {0}")]
     Validation(&'static str),
     #[error("WG API error: {0}")]
@@ -41,6 +43,7 @@ impl IntoResponse for ApiError {
             Self::ApiClient(ApiClientError::InvalidAccessToken) => {
                 error_response(StatusCode::BAD_REQUEST, "Invalid access token.".into())
             }
+            Self::Unauthorized => error_response(StatusCode::UNAUTHORIZED, "Unauthorized.".into()),
             _ => {
                 error!("{}", self);
                 error_response(
