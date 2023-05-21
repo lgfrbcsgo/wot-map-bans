@@ -7,8 +7,8 @@ use tracing::warn;
 
 use crate::error::ApiError;
 use crate::model::{
-    CurrentMap, CurrentMapsQuery, CurrentMapsResponse, CurrentServer, CurrentServersResponse,
-    PlayMapPayload,
+    CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery, GetCurrentMapsResponse,
+    GetCurrentServersResponse,
 };
 use crate::util::{ValidJson, ValidQuery};
 use crate::AppContext;
@@ -22,7 +22,7 @@ pub fn router() -> Router<AppContext> {
 
 async fn create_played_map(
     State(pool): State<PgPool>,
-    ValidJson(payload): ValidJson<PlayMapPayload>,
+    ValidJson(payload): ValidJson<CreatePlayedMapPayload>,
 ) -> Result<StatusCode, ApiError> {
     let row = sqlx::query_file!(
         "queries/insert_played_map.sql",
@@ -50,8 +50,8 @@ async fn create_played_map(
 
 async fn get_current_maps(
     State(pool): State<PgPool>,
-    ValidQuery(query): ValidQuery<CurrentMapsQuery>,
-) -> Result<Json<CurrentMapsResponse>, ApiError> {
+    ValidQuery(query): ValidQuery<GetCurrentMapsQuery>,
+) -> Result<Json<GetCurrentMapsResponse>, ApiError> {
     let rows = sqlx::query_file_as!(
         CurrentMap,
         "queries/select_current_maps.sql",
@@ -62,15 +62,15 @@ async fn get_current_maps(
     .fetch_all(&pool)
     .await?;
 
-    Ok(Json(CurrentMapsResponse::from_rows(rows)))
+    Ok(Json(GetCurrentMapsResponse::from_rows(rows)))
 }
 
 async fn get_current_servers(
     State(pool): State<PgPool>,
-) -> Result<Json<CurrentServersResponse>, ApiError> {
+) -> Result<Json<GetCurrentServersResponse>, ApiError> {
     let rows = sqlx::query_file_as!(CurrentServer, "queries/select_current_servers.sql")
         .fetch_all(&pool)
         .await?;
 
-    Ok(Json(CurrentServersResponse::from_rows(rows)))
+    Ok(Json(GetCurrentServersResponse::from_rows(rows)))
 }

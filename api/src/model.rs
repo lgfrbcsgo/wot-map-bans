@@ -6,7 +6,7 @@ use crate::error::ApiError;
 use crate::util::Validate;
 
 #[derive(Debug, Deserialize)]
-pub struct PlayMapPayload {
+pub struct CreatePlayedMapPayload {
     pub server: String,
     pub map: String,
     pub mode: String,
@@ -14,7 +14,7 @@ pub struct PlayMapPayload {
     pub top_tier: i16,
 }
 
-impl Validate for PlayMapPayload {
+impl Validate for CreatePlayedMapPayload {
     fn validate(&self) -> Result<(), ApiError> {
         if self.server.len() > 10 {
             Err(ApiError::Validation("Server name too long."))?;
@@ -46,13 +46,13 @@ impl Validate for PlayMapPayload {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CurrentMapsQuery {
+pub struct GetCurrentMapsQuery {
     pub server: String,
     pub min_tier: i16,
     pub max_tier: i16,
 }
 
-impl Validate for CurrentMapsQuery {
+impl Validate for GetCurrentMapsQuery {
     fn validate(&self) -> Result<(), ApiError> {
         if self.server.len() > 10 {
             Err(ApiError::Validation("Server name too long."))?;
@@ -78,12 +78,12 @@ pub struct CurrentMap {
 }
 
 #[derive(Debug, Serialize)]
-pub struct CurrentMapsResponse {
+pub struct GetCurrentMapsResponse {
     pub total: usize,
     pub modes: HashMap<String, HashMap<String, usize>>,
 }
 
-impl CurrentMapsResponse {
+impl GetCurrentMapsResponse {
     pub fn from_rows(rows: Vec<CurrentMap>) -> Self {
         let total = rows.len();
         let mut modes: HashMap<String, HashMap<String, usize>> = HashMap::new();
@@ -105,12 +105,12 @@ pub struct CurrentServer {
 }
 
 #[derive(Debug, Serialize)]
-pub struct CurrentServersResponse {
+pub struct GetCurrentServersResponse {
     pub total: usize,
     pub regions: HashMap<String, HashMap<String, usize>>,
 }
 
-impl CurrentServersResponse {
+impl GetCurrentServersResponse {
     pub fn from_rows(rows: Vec<CurrentServer>) -> Self {
         let total = rows.len();
         let mut regions: HashMap<String, HashMap<String, usize>> = HashMap::new();
