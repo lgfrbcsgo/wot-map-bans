@@ -96,3 +96,30 @@ impl CurrentMapsResponse {
         Self { total, modes }
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CurrentServer {
+    pub name: String,
+    pub region: String,
+    pub count: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CurrentServersResponse {
+    pub total: usize,
+    pub regions: HashMap<String, HashMap<String, usize>>,
+}
+
+impl CurrentServersResponse {
+    pub fn from_rows(rows: Vec<CurrentServer>) -> Self {
+        let total = rows.len();
+        let mut regions: HashMap<String, HashMap<String, usize>> = HashMap::new();
+        for row in rows {
+            if let Some(count) = row.count {
+                let servers = regions.entry(row.region).or_insert_with(HashMap::new);
+                servers.insert(row.name, usize::try_from(count).unwrap_or(0));
+            }
+        }
+        Self { total, regions }
+    }
+}

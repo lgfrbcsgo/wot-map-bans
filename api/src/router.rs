@@ -6,7 +6,10 @@ use sqlx::PgPool;
 use tracing::warn;
 
 use crate::error::ApiError;
-use crate::model::{CurrentMap, CurrentMapsQuery, CurrentMapsResponse, PlayMapPayload};
+use crate::model::{
+    CurrentMap, CurrentMapsQuery, CurrentMapsResponse, CurrentServer, CurrentServersResponse,
+    PlayMapPayload,
+};
 use crate::util::{ValidJson, ValidQuery};
 use crate::AppContext;
 
@@ -14,6 +17,7 @@ pub fn router() -> Router<AppContext> {
     Router::new()
         .route("/api/played-map", post(create_played_map))
         .route("/api/current-maps", get(get_current_maps))
+        .route("/api/current-servers", get(get_current_servers))
 }
 
 async fn create_played_map(
@@ -59,4 +63,14 @@ async fn get_current_maps(
     .await?;
 
     Ok(Json(CurrentMapsResponse::from_rows(rows)))
+}
+
+async fn get_current_servers(
+    State(pool): State<PgPool>,
+) -> Result<Json<CurrentServersResponse>, ApiError> {
+    let rows = sqlx::query_file_as!(CurrentServer, "queries/select_current_servers.sql")
+        .fetch_all(&pool)
+        .await?;
+
+    Ok(Json(CurrentServersResponse::from_rows(rows)))
 }
