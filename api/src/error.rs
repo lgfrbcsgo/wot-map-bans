@@ -1,3 +1,4 @@
+use crate::api_client::ApiClientError;
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -6,10 +7,14 @@ use serde_json::json;
 use thiserror::Error;
 use tracing::error;
 
+pub type Result<T> = core::result::Result<T, ApiError>;
+
 #[derive(Error, Debug)]
 pub enum ApiError {
     #[error("Validation error: {0}")]
     Validation(&'static str),
+    #[error("WG API error: {0}")]
+    ApiClient(#[from] ApiClientError),
     #[error(transparent)]
     JsonExtractor(#[from] JsonRejection),
     #[error(transparent)]
@@ -29,6 +34,9 @@ impl IntoResponse for ApiError {
             }
             Self::QueryExtractor(rejection) => {
                 error_response(StatusCode::BAD_REQUEST, rejection.body_text())
+            }
+            Self::ApiClient(ApiClientError::InvalidAccessToken) => {
+                error_response(StatusCode::BAD_REQUEST, "Invalid access token.".into())
             }
             _ => {
                 error!("{}", self);

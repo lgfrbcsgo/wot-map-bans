@@ -50,8 +50,8 @@ pub fn make_request_span(request: &Request<Body>) -> Span {
     }
 }
 
-pub trait Validate {
-    fn validate(&self) -> Result<(), ApiError>;
+pub trait Validate<E> {
+    fn validate(&self) -> Result<(), E>;
 }
 
 pub struct ValidJson<T>(pub T);
@@ -59,7 +59,7 @@ pub struct ValidJson<T>(pub T);
 #[async_trait]
 impl<T, S, B> FromRequest<S, B> for ValidJson<T>
 where
-    T: Validate + DeserializeOwned,
+    T: Validate<ApiError> + DeserializeOwned,
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
@@ -79,7 +79,7 @@ pub struct ValidQuery<T>(pub T);
 #[async_trait]
 impl<S, T> FromRequestParts<S> for ValidQuery<T>
 where
-    T: Validate + DeserializeOwned,
+    T: Validate<ApiError> + DeserializeOwned,
     S: Send + Sync,
 {
     type Rejection = ApiError;
@@ -104,8 +104,8 @@ pub async fn retry<T, E: Display, Fut: Future<Output = Result<T, E>>, F: Fn() ->
                 if retries == 0 {
                     return Err(e);
                 } else {
-                    retries -= 1;
                     warn!("Retrying {} more times. Error: {}", retries, e);
+                    retries -= 1;
                     tokio::time::sleep(interval).await;
                 }
             }

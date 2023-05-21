@@ -1,6 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
+use crate::api_client::AppId;
 use axum::extract::FromRef;
 use axum::Server;
 use dotenvy::dotenv;
@@ -12,6 +13,7 @@ use tracing::info;
 use crate::router::router;
 use crate::util::{make_request_span, retry, UuidRequestId, X_REQUEST_ID};
 
+mod api_client;
 mod error;
 mod model;
 mod router;
@@ -20,6 +22,7 @@ mod util;
 #[derive(Clone, FromRef)]
 pub struct AppContext {
     pool: PgPool,
+    app_id: AppId,
 }
 
 #[tokio::main]
@@ -27,6 +30,10 @@ async fn main() {
     dotenv().ok();
 
     tracing_subscriber::fmt::init();
+
+    let app_id = std::env::var("APP_ID")
+        .map(AppId::new)
+        .expect("Env var `APP_ID` is not set.");
 
     let db_connection_str =
         std::env::var("DATABASE_URL").expect("Env var `DATABASE_URL` is not set.");
@@ -47,7 +54,7 @@ async fn main() {
         .await
         .expect("Database migration failed.");
 
-    let app_context = AppContext { pool };
+    let app_context = AppContext { pool, app_id };
     let app = router()
         .with_state(app_context)
         .layer(TraceLayer::new_for_http().make_span_with(make_request_span))

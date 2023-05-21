@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::ApiError;
+use crate::api_client::Region;
+use crate::error::{ApiError, Result};
 use crate::util::Validate;
 
 #[derive(Debug, Deserialize)]
@@ -14,8 +15,8 @@ pub struct CreatePlayedMapPayload {
     pub top_tier: i16,
 }
 
-impl Validate for CreatePlayedMapPayload {
-    fn validate(&self) -> Result<(), ApiError> {
+impl Validate<ApiError> for CreatePlayedMapPayload {
+    fn validate(&self) -> Result<()> {
         if self.server.len() > 10 {
             Err(ApiError::Validation("Server name too long."))?;
         }
@@ -52,8 +53,8 @@ pub struct GetCurrentMapsQuery {
     pub max_tier: i16,
 }
 
-impl Validate for GetCurrentMapsQuery {
-    fn validate(&self) -> Result<(), ApiError> {
+impl Validate<ApiError> for GetCurrentMapsQuery {
+    fn validate(&self) -> Result<()> {
         if self.server.len() > 10 {
             Err(ApiError::Validation("Server name too long."))?;
         }
@@ -121,5 +122,20 @@ impl GetCurrentServersResponse {
             }
         }
         Self { total, regions }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuthenticatePayload {
+    pub region: Region,
+    pub access_token: String,
+}
+
+impl Validate<ApiError> for AuthenticatePayload {
+    fn validate(&self) -> Result<()> {
+        if self.access_token.len() > 500 {
+            Err(ApiError::Validation("Access token too long."))?;
+        }
+        Ok(())
     }
 }
