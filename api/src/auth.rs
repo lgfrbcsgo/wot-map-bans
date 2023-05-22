@@ -65,16 +65,11 @@ pub async fn auth_middleware<B>(
     mut req: Request<B>,
     next: Next<B>,
 ) -> Result<Response> {
-    if let Some(claims) = decode_token_from_headers(headers, &secret) {
+    if let Some(header) = headers.get(AUTHORIZATION) {
+        let header_str = header.to_str().map_err(|_| ApiError::Unauthorized)?;
+        let (_, token) = header_str.split_once(" ").ok_or(ApiError::Unauthorized)?;
+        let claims = decode_token(&token, &secret)?;
         req.extensions_mut().insert(claims);
     }
     Ok(next.run(req).await)
-}
-
-fn decode_token_from_headers(headers: HeaderMap, secret: &ServerSecret) -> Option<TokenClaims> {
-    let header = headers.get(AUTHORIZATION)?.to_str().ok()?;
-    match header.split_once(" ") {
-        Some(("Bearer", token)) => decode_token(&token, &secret).ok(),
-        _ => None,
-    }
 }
