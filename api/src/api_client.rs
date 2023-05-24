@@ -76,7 +76,7 @@ impl ApiClient {
             ("account_id", &account_id.to_string()),
         ];
 
-        let req = self.http_client.post(url).form(&params);
+        let req = self.http_client.get(url).query(&params);
         let res = req
             .send()
             .await
