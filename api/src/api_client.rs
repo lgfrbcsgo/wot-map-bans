@@ -1,29 +1,14 @@
 use std::collections::HashMap;
 
+use anyhow::{anyhow, Context};
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use thiserror::Error;
 
+use crate::error::Result;
 use crate::AppId;
-
-pub type Result<T> = core::result::Result<T, ApiClientError>;
-
-#[derive(Error, Debug)]
-pub enum ApiClientError {
-    #[error("Invalid access token.")]
-    InvalidAccessToken,
-    #[error("Account with ID {0} not found.")]
-    AccountNotFound(u64),
-    #[error("Error response: {0:?}")]
-    ErrorResponse(ErrorDetail),
-    #[error(transparent)]
-    UrlParse(#[from] url::ParseError),
-    #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
-}
 
 #[derive(Debug, Deserialize)]
 pub enum Region {
@@ -38,8 +23,13 @@ impl Region {
             Region::EU => Url::parse("https://api.worldoftanks.eu"),
             Region::NA => Url::parse("https://api.worldoftanks.com"),
             Region::ASIA => Url::parse("https://api.worldoftanks.asia"),
-        }?;
-        let endpoint_url = base_url.join(endpoint)?;
+        }
+        .context("Failed to parse base URL")?;
+
+        let endpoint_url = base_url
+            .join(endpoint)
+            .with_context(|| format!("Failed to construct URL for endpoint {}", endpoint))?;
+
         Ok(endpoint_url)
     }
 }
@@ -66,9 +56,17 @@ impl ApiClient {
             ("access_token", access_token.as_str()),
         ];
 
-        let res = self.http_client.post(url).form(&params).send().await?;
+        let req = self.http_client.post(url).form(&params);
+        let res = req
+            .send()
+            .await
+            .context("Request to extend access token failed")?;
 
-        ApiClient::get_response_data::<AccessTokenDetails>(res).await
+        let token_detail = ApiClient::get_response_data::<AccessTokenDetails>(res)
+            .await
+            .context("Failed to extend access token")?;
+
+        Ok(token_detail)
     }
 
     pub async fn get_public_account_info(&self, account_id: u64) -> Result<AccountInfo> {
@@ -78,23 +76,33 @@ impl ApiClient {
             ("account_id", &account_id.to_string()),
         ];
 
-        let res = self.http_client.post(url).form(&params).send().await?;
+        let req = self.http_client.post(url).form(&params);
+        let res = req
+            .send()
+            .await
+            .context("Request to fetch account info failed")?;
 
-        ApiClient::get_response_data::<HashMap<String, AccountInfo>>(res)
-            .await?
+        let account_info = ApiClient::get_response_data::<HashMap<String, AccountInfo>>(res)
+            .await
+            .context("Failed to fetch account info")?
             .remove(&account_id.to_string())
-            .ok_or(ApiClientError::AccountNotFound(account_id))
+            .ok_or(anyhow!("Account not found: {}", account_id))?;
+
+        Ok(account_info)
     }
 
     async fn get_response_data<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
-        let api_response = response.json::<ApiResponse<T>>().await?;
-        match api_response {
+        let api_response = response
+            .json::<ApiResponse<T>>()
+            .await
+            .context("Failed to decode response as JSON")?;
+
+        let data = match api_response {
             ApiResponse::Success { data } => Ok(data),
-            ApiResponse::Error { error } if error.message == "INVALID_ACCESS_TOKEN" => {
-                Err(ApiClientError::InvalidAccessToken)
-            }
-            ApiResponse::Error { error } => Err(ApiClientError::ErrorResponse(error)),
-        }
+            ApiResponse::Error { error } => Err(anyhow!("Received error response: {:?}", error)),
+        }?;
+
+        Ok(data)
     }
 }
 

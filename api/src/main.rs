@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
-use crate::auth::auth_middleware;
+use anyhow::Context;
 use axum::extract::FromRef;
 use axum::{middleware, Server};
 use dotenvy::dotenv;
@@ -10,6 +10,8 @@ use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+use crate::auth::auth_middleware;
+use crate::error::Result;
 use crate::router::router;
 use crate::util::{make_request_span, retry, UuidRequestId, X_REQUEST_ID};
 
@@ -34,21 +36,21 @@ pub struct AppContext {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenv().ok();
 
     tracing_subscriber::fmt::init();
 
     let app_id = std::env::var("APP_ID")
         .map(AppId)
-        .expect("Env var `APP_ID` is not set.");
+        .context("Env var `APP_ID` is not set.")?;
 
     let server_secret = std::env::var("SERVER_SECRET")
         .map(ServerSecret)
-        .expect("Env var `SERVER_SECRET` is not set.");
+        .context("Env var `SERVER_SECRET` is not set.")?;
 
     let db_connection_str =
-        std::env::var("DATABASE_URL").expect("Env var `DATABASE_URL` is not set.");
+        std::env::var("DATABASE_URL").context("Env var `DATABASE_URL` is not set.")?;
 
     let pool = retry(60, Duration::from_secs(2), || {
         info!("Connecting to database.");
@@ -58,13 +60,13 @@ async fn main() {
             .connect(&db_connection_str)
     })
     .await
-    .expect("Cannot connect to database.");
+    .context("Cannot connect to database.")?;
 
     info!("Migrating database.");
     sqlx::migrate!()
         .run(&pool)
         .await
-        .expect("Database migration failed.");
+        .context("Database migration failed.")?;
 
     let app_context = AppContext {
         pool,
@@ -90,5 +92,7 @@ async fn main() {
     Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .expect("Server failed to start up.");
+        .context("Server failed to start up.")?;
+
+    Ok(())
 }

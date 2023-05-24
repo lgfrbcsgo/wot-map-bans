@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum::async_trait;
 use axum::extract::{FromRequestParts, State};
 use axum::http::header::AUTHORIZATION;
@@ -10,7 +11,7 @@ use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{ApiError, Result};
+use crate::error::{Error, Result};
 use crate::ServerSecret;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -22,12 +23,12 @@ pub struct TokenClaims {
 
 #[async_trait]
 impl<S: Send + Sync> FromRequestParts<S> for TokenClaims {
-    type Rejection = ApiError;
+    type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         match parts.extensions.get::<TokenClaims>() {
             Some(claims) => Ok(claims.clone()),
-            None => Err(ApiError::Unauthorized),
+            None => Err(Error::AuthRequired),
         }
     }
 }
@@ -44,19 +45,20 @@ pub fn create_token(account_id: u64, secret: &ServerSecret) -> Result<String> {
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(secret.0.as_ref()),
-    )?;
+    )
+    .context("Failed to encode JWT")?;
 
     Ok(token)
 }
 
 pub fn decode_token(token: &str, secret: &ServerSecret) -> Result<TokenClaims> {
-    let data = jsonwebtoken::decode::<TokenClaims>(
+    jsonwebtoken::decode::<TokenClaims>(
         token,
         &DecodingKey::from_secret(secret.0.as_ref()),
         &Validation::default(),
-    )?;
-
-    Ok(data.claims)
+    )
+    .map_err(|_| Error::InvalidBearerToken)
+    .map(|data| data.claims)
 }
 
 pub async fn auth_middleware<B>(
@@ -66,10 +68,14 @@ pub async fn auth_middleware<B>(
     next: Next<B>,
 ) -> Result<Response> {
     if let Some(header) = headers.get(AUTHORIZATION) {
-        let header_str = header.to_str().map_err(|_| ApiError::Unauthorized)?;
-        let (_, token) = header_str.split_once(" ").ok_or(ApiError::Unauthorized)?;
-        let claims = decode_token(&token, &secret)?;
-        req.extensions_mut().insert(claims);
+        let header_str = header.to_str().map_err(|_| Error::InvalidAuthHeader)?;
+        match header_str.split_once(" ") {
+            Some(("Bearer", token)) => {
+                let claims = decode_token(&token, &secret)?;
+                req.extensions_mut().insert(claims);
+            }
+            _ => Err(Error::InvalidAuthHeader)?,
+        }
     }
     Ok(next.run(req).await)
 }

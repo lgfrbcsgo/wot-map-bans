@@ -1,13 +1,13 @@
+use anyhow::Context;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use sqlx::PgPool;
-use tracing::warn;
 
 use crate::api_client::ApiClient;
 use crate::auth::{create_token, TokenClaims};
-use crate::error::{ApiError, Result};
+use crate::error::{Error, Result};
 use crate::model::{
     AuthenticatePayload, AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer,
     GetCurrentMapsQuery, GetCurrentMapsResponse, GetCurrentServersResponse,
@@ -38,18 +38,15 @@ async fn create_played_map(
         payload.top_tier
     )
     .fetch_optional(&pool)
-    .await?;
+    .await
+    .with_context(|| format!("Failed to insert played map: {:?}", payload))?;
 
-    match row {
-        Some(_) => Ok(StatusCode::NO_CONTENT),
-        None => {
-            warn!(
-                "Unknown server `{}`, map `{}`, or mode `{}`.",
-                payload.server, payload.map, payload.mode
-            );
-            Err(ApiError::Validation("Unknown server, map, or mode."))
-        }
-    }
+    row.map(|_| StatusCode::NO_CONTENT)
+        .ok_or(Error::UnrecognizedValue {
+            server: payload.server,
+            map: payload.map,
+            mode: payload.mode,
+        })
 }
 
 async fn get_current_maps(
@@ -64,7 +61,8 @@ async fn get_current_maps(
         query.max_tier
     )
     .fetch_all(&pool)
-    .await?;
+    .await
+    .with_context(|| format!("Failed to get current maps: {:?}", query))?;
 
     Ok(Json(GetCurrentMapsResponse::from_rows(rows)))
 }
@@ -74,7 +72,8 @@ async fn get_current_servers(
 ) -> Result<Json<GetCurrentServersResponse>> {
     let rows = sqlx::query_file_as!(CurrentServer, "queries/select_current_servers.sql")
         .fetch_all(&pool)
-        .await?;
+        .await
+        .context("Failed to get current servers")?;
 
     Ok(Json(GetCurrentServersResponse::from_rows(rows)))
 }
@@ -92,10 +91,13 @@ async fn authenticate(
         .get_public_account_info(token_details.account_id)
         .await?;
 
-    if account_info.statistics.all.battles >= 200 {
+    const REQUIRED_BATTLES: u32 = 200;
+    if account_info.statistics.all.battles >= REQUIRED_BATTLES {
         let token = create_token(token_details.account_id, &server_secret)?;
         Ok(Json(AuthenticateResponse { token }))
     } else {
-        Err(ApiError::Validation("Not enough battles."))
+        Err(Error::NotEnoughBattles {
+            required: REQUIRED_BATTLES,
+        })
     }
 }

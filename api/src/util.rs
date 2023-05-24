@@ -11,8 +11,9 @@ use serde::de::DeserializeOwned;
 use tower_http::request_id::{MakeRequestId, RequestId};
 use tracing::{error_span, warn, Span};
 use uuid::Uuid;
+use validator::Validate;
 
-use crate::error::ApiError;
+use crate::error::Error;
 
 pub static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
@@ -50,26 +51,24 @@ pub fn make_request_span(request: &Request<Body>) -> Span {
     }
 }
 
-pub trait Validate<E> {
-    fn validate(&self) -> Result<(), E>;
-}
-
 pub struct ValidJson<T>(pub T);
 
 #[async_trait]
 impl<T, S, B> FromRequest<S, B> for ValidJson<T>
 where
-    T: Validate<ApiError> + DeserializeOwned,
+    T: Validate + DeserializeOwned,
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,
 {
-    type Rejection = ApiError;
+    type Rejection = Error;
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let Json(data): Json<T> = Json::from_request(req, state).await?;
-        data.validate()?;
+        let Json(data): Json<T> = Json::from_request(req, state)
+            .await
+            .map_err(|e| Error::InvalidBodySchema(e.body_text()))?;
+        data.validate().map_err(Error::InvalidBody)?;
         Ok(ValidJson(data))
     }
 }
@@ -79,14 +78,16 @@ pub struct ValidQuery<T>(pub T);
 #[async_trait]
 impl<S, T> FromRequestParts<S> for ValidQuery<T>
 where
-    T: Validate<ApiError> + DeserializeOwned,
+    T: Validate + DeserializeOwned,
     S: Send + Sync,
 {
-    type Rejection = ApiError;
+    type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let Query(data): Query<T> = Query::from_request_parts(parts, state).await?;
-        data.validate()?;
+        let Query(data): Query<T> = Query::from_request_parts(parts, state)
+            .await
+            .map_err(|e| Error::InvalidQuerySchema(e.body_text()))?;
+        data.validate().map_err(Error::InvalidQuery)?;
         Ok(ValidQuery(data))
     }
 }

@@ -1,61 +1,103 @@
-use axum::extract::rejection::{JsonRejection, QueryRejection};
+use std::fmt::{Debug, Display, Formatter};
+
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use serde_json::json;
-use thiserror::Error;
-use tracing::error;
+use serde::{Serialize, Serializer};
+use tracing::{debug, error, warn};
+use validator::ValidationErrors;
 
-use crate::api_client::ApiClientError;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub type Result<T, E = ApiError> = core::result::Result<T, E>;
-
-#[derive(Error, Debug)]
-pub enum ApiError {
-    #[error("Unauthorized")]
-    Unauthorized,
-    #[error("Validation error: {0}")]
-    Validation(&'static str),
-    #[error("WG API error: {0}")]
-    ApiClient(#[from] ApiClientError),
+#[derive(thiserror::Error, Debug, Serialize)]
+#[serde(tag = "error", content = "detail")]
+pub enum Error {
+    #[error("Invalid query schema: {0}")]
+    InvalidQuerySchema(String),
+    #[error("Invalid query: {0}")]
+    InvalidQuery(ValidationErrors),
+    #[error("Invalid body schema: {0}")]
+    InvalidBodySchema(String),
+    #[error("Invalid body: {0}")]
+    InvalidBody(ValidationErrors),
+    #[error("Invalid auth header")]
+    InvalidAuthHeader,
+    #[error("Invalid bearer token")]
+    InvalidBearerToken,
+    #[error("Authentication required")]
+    AuthRequired,
+    #[error("Unrecognized server '{server}', map '{map}', or mode '{mode}'")]
+    UnrecognizedValue {
+        server: String,
+        map: String,
+        mode: String,
+    },
+    #[error("Not enough battles. {required} battles required.")]
+    NotEnoughBattles { required: u32 },
     #[error(transparent)]
-    JsonExtractor(#[from] JsonRejection),
-    #[error(transparent)]
-    QueryExtractor(#[from] QueryRejection),
-    #[error(transparent)]
-    Sqlx(#[from] sqlx::Error),
-    #[error(transparent)]
-    JWT(#[from] jsonwebtoken::errors::Error),
+    InternalError(InternalError),
 }
 
-impl IntoResponse for ApiError {
-    fn into_response(self) -> Response {
+impl Error {
+    fn status_code(&self) -> StatusCode {
         match self {
-            Self::Validation(message) => {
-                error_response(StatusCode::BAD_REQUEST, message.to_string())
-            }
-            Self::JsonExtractor(rejection) => {
-                error_response(StatusCode::BAD_REQUEST, rejection.body_text())
-            }
-            Self::QueryExtractor(rejection) => {
-                error_response(StatusCode::BAD_REQUEST, rejection.body_text())
-            }
-            Self::ApiClient(ApiClientError::InvalidAccessToken) => {
-                error_response(StatusCode::BAD_REQUEST, "Invalid access token.".into())
-            }
-            Self::Unauthorized => error_response(StatusCode::UNAUTHORIZED, "Unauthorized.".into()),
-            _ => {
-                error!("{}", self);
-                error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error.".into(),
-                )
-            }
+            Self::InvalidQuerySchema(_) => StatusCode::BAD_REQUEST,
+            Self::InvalidQuery(_) => StatusCode::BAD_REQUEST,
+            Self::InvalidBodySchema(_) => StatusCode::BAD_REQUEST,
+            Self::InvalidBody(_) => StatusCode::BAD_REQUEST,
+            Self::InvalidAuthHeader => StatusCode::UNAUTHORIZED,
+            Self::InvalidBearerToken => StatusCode::UNAUTHORIZED,
+            Self::AuthRequired => StatusCode::UNAUTHORIZED,
+            Self::UnrecognizedValue {
+                server: _,
+                map: _,
+                mode: _,
+            } => StatusCode::BAD_REQUEST,
+            Self::NotEnoughBattles { required: _ } => StatusCode::UNAUTHORIZED,
+            Self::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
 
-fn error_response(status: StatusCode, message: String) -> Response {
-    let body = json!({ "error": message });
-    (status, Json(body)).into_response()
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        match &self {
+            Self::InternalError(e) => error!("{:?}", e),
+            Self::UnrecognizedValue {
+                server: _,
+                map: _,
+                mode: _,
+            } => warn!("{:?}", self),
+            _ => debug!("{:?}", self),
+        }
+        (self.status_code(), Json(self)).into_response()
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(value: anyhow::Error) -> Self {
+        Error::InternalError(InternalError(value))
+    }
+}
+
+pub struct InternalError(anyhow::Error);
+
+impl std::error::Error for InternalError {}
+
+impl Display for InternalError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl Debug for InternalError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl Serialize for InternalError {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str("Something went wrong :shrug:")
+    }
 }

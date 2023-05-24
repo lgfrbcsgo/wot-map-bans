@@ -1,74 +1,42 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use validator::{Validate, ValidationError};
 
 use crate::api_client::Region;
-use crate::error::{ApiError, Result};
-use crate::util::Validate;
+use crate::error::Result;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
+#[validate(schema(function = "validate_tier_spread"))]
 pub struct CreatePlayedMapPayload {
+    #[validate(length(max = 10))]
     pub server: String,
+    #[validate(length(max = 50))]
     pub map: String,
+    #[validate(length(max = 50))]
     pub mode: String,
+    #[validate(range(min = 1, max = 10))]
     pub bottom_tier: i16,
+    #[validate(range(min = 1, max = 10))]
     pub top_tier: i16,
 }
 
-impl Validate<ApiError> for CreatePlayedMapPayload {
-    fn validate(&self) -> Result<()> {
-        if self.server.len() > 10 {
-            Err(ApiError::Validation("Server name too long."))?;
-        }
-
-        if self.map.len() > 50 {
-            Err(ApiError::Validation("Map name too long."))?;
-        }
-
-        if self.mode.len() > 50 {
-            Err(ApiError::Validation("Mode name too long."))?;
-        }
-
-        if self.bottom_tier < 1 || 10 < self.bottom_tier {
-            Err(ApiError::Validation("Invalid bottom tier."))?;
-        }
-
-        if self.top_tier < 1 || 10 < self.top_tier {
-            Err(ApiError::Validation("Invalid top tier."))?;
-        }
-
-        let tier_spread = self.top_tier - self.bottom_tier;
-        if tier_spread < 0 || 2 < tier_spread {
-            Err(ApiError::Validation("Invalid tier spread."))?;
-        }
-
-        Ok(())
+fn validate_tier_spread(payload: &CreatePlayedMapPayload) -> Result<(), ValidationError> {
+    let tier_spread = payload.top_tier - payload.bottom_tier;
+    if tier_spread < 0 || 2 < tier_spread {
+        Err(ValidationError::new("Invalid tier spread."))?;
     }
+    Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct GetCurrentMapsQuery {
+    #[validate(length(max = 10))]
     pub server: String,
+    #[validate(range(min = 1, max = 10))]
     pub min_tier: i16,
+    #[validate(range(min = 1, max = 10))]
     pub max_tier: i16,
-}
-
-impl Validate<ApiError> for GetCurrentMapsQuery {
-    fn validate(&self) -> Result<()> {
-        if self.server.len() > 10 {
-            Err(ApiError::Validation("Server name too long."))?;
-        }
-
-        if self.min_tier < 1 || 10 < self.min_tier {
-            Err(ApiError::Validation("Invalid min tier."))?;
-        }
-
-        if self.max_tier < 1 || 10 < self.max_tier {
-            Err(ApiError::Validation("Invalid max tier."))?;
-        }
-
-        Ok(())
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -125,19 +93,11 @@ impl GetCurrentServersResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct AuthenticatePayload {
     pub region: Region,
+    #[validate(length(max = 500))]
     pub access_token: String,
-}
-
-impl Validate<ApiError> for AuthenticatePayload {
-    fn validate(&self) -> Result<()> {
-        if self.access_token.len() > 500 {
-            Err(ApiError::Validation("Access token too long."))?;
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug, Serialize)]
