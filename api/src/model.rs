@@ -30,6 +30,7 @@ fn validate_tier_spread(payload: &CreatePlayedMapPayload) -> Result<(), Validati
 }
 
 #[derive(Debug, Deserialize, Validate)]
+#[validate(schema(function = "validate_max_tier_goe_min_tier"))]
 pub struct GetCurrentMapsQuery {
     #[validate(length(max = 10))]
     pub server: String,
@@ -37,6 +38,13 @@ pub struct GetCurrentMapsQuery {
     pub min_tier: i16,
     #[validate(range(min = 1, max = 10))]
     pub max_tier: i16,
+}
+
+fn validate_max_tier_goe_min_tier(payload: &GetCurrentMapsQuery) -> Result<(), ValidationError> {
+    if payload.min_tier <= payload.max_tier {
+        Err(ValidationError::new("Invalid tier range."))?;
+    }
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
