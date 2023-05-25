@@ -6,7 +6,7 @@ use axum::body::{Body, HttpBody};
 use axum::extract::{FromRequest, FromRequestParts, Query};
 use axum::http::request::Parts;
 use axum::http::{HeaderName, HeaderValue, Request};
-use axum::{async_trait, BoxError, Json};
+use axum::{async_trait, BoxError, Form, Json};
 use serde::de::DeserializeOwned;
 use tower_http::request_id::{MakeRequestId, RequestId};
 use tracing::{error_span, warn, Span};
@@ -89,6 +89,27 @@ where
             .map_err(|e| ClientError::IncorrectType(e.body_text()))?;
         data.validate().map_err(ClientError::Invalid)?;
         Ok(ValidQuery(data))
+    }
+}
+
+pub struct AnyForm(pub Vec<(String, String)>);
+
+#[async_trait]
+impl<S, B> FromRequest<S, B> for AnyForm
+where
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let Form(data): Form<Vec<(String, String)>> = Form::from_request(req, state)
+            .await
+            .map_err(|e| ClientError::IncorrectType(e.body_text()))?;
+
+        Ok(AnyForm(data))
     }
 }
 
