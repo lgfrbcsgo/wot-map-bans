@@ -11,16 +11,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(thiserror::Error, Debug, Serialize)]
 #[serde(tag = "error", content = "detail")]
 pub enum ClientError {
-    #[error("Invalid query schema: {0}")]
-    InvalidQuerySchema(String),
-    #[error("Invalid query: {0}")]
-    InvalidQuery(ValidationErrors),
-    #[error("Invalid body schema: {0}")]
-    InvalidBodySchema(String),
-    #[error("Invalid body: {0}")]
-    InvalidBody(ValidationErrors),
-    #[error("Invalid auth header")]
-    InvalidAuthHeader,
+    #[error("Incorrect type: {0}")]
+    IncorrectType(String),
+    #[error("Invalid: {0}")]
+    Invalid(ValidationErrors),
+    #[error("Expected bearer token")]
+    ExpectedBearerToken,
     #[error("Invalid bearer token")]
     InvalidBearerToken,
     #[error("Authentication required")]
@@ -32,11 +28,9 @@ pub enum ClientError {
 impl ClientError {
     fn status_code(&self) -> StatusCode {
         match self {
-            Self::InvalidQuerySchema(_) => StatusCode::BAD_REQUEST,
-            Self::InvalidQuery(_) => StatusCode::BAD_REQUEST,
-            Self::InvalidBodySchema(_) => StatusCode::BAD_REQUEST,
-            Self::InvalidBody(_) => StatusCode::BAD_REQUEST,
-            Self::InvalidAuthHeader => StatusCode::UNAUTHORIZED,
+            Self::IncorrectType(_) => StatusCode::BAD_REQUEST,
+            Self::Invalid(_) => StatusCode::BAD_REQUEST,
+            Self::ExpectedBearerToken => StatusCode::UNAUTHORIZED,
             Self::InvalidBearerToken => StatusCode::UNAUTHORIZED,
             Self::AuthRequired => StatusCode::UNAUTHORIZED,
             Self::NotEnoughBattles => StatusCode::UNAUTHORIZED,

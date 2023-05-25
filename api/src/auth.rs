@@ -70,14 +70,14 @@ pub async fn auth_middleware<B>(
     if let Some(header) = headers.get(AUTHORIZATION) {
         let header_str = header
             .to_str()
-            .map_err(|_| ClientError::InvalidAuthHeader)?;
+            .map_err(|_| ClientError::ExpectedBearerToken)?;
 
         match header_str.split_once(" ") {
             Some(("Bearer", token)) => {
                 let claims = decode_token(&token, &secret)?;
                 req.extensions_mut().insert(claims);
             }
-            _ => Err(ClientError::InvalidAuthHeader)?,
+            _ => Err(ClientError::ExpectedBearerToken)?,
         }
     }
     Ok(next.run(req).await)

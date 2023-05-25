@@ -67,8 +67,8 @@ where
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         let Json(data): Json<T> = Json::from_request(req, state)
             .await
-            .map_err(|e| ClientError::InvalidBodySchema(e.body_text()))?;
-        data.validate().map_err(ClientError::InvalidBody)?;
+            .map_err(|e| ClientError::IncorrectType(e.body_text()))?;
+        data.validate().map_err(ClientError::Invalid)?;
         Ok(ValidJson(data))
     }
 }
@@ -86,8 +86,8 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let Query(data): Query<T> = Query::from_request_parts(parts, state)
             .await
-            .map_err(|e| ClientError::InvalidQuerySchema(e.body_text()))?;
-        data.validate().map_err(ClientError::InvalidQuery)?;
+            .map_err(|e| ClientError::IncorrectType(e.body_text()))?;
+        data.validate().map_err(ClientError::Invalid)?;
         Ok(ValidQuery(data))
     }
 }
