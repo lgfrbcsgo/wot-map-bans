@@ -92,11 +92,12 @@ where
     }
 }
 
-pub struct AnyForm(pub Vec<(String, String)>);
+pub struct ValidForm<T>(pub T);
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for AnyForm
+impl<T, S, B> FromRequest<S, B> for ValidForm<T>
 where
+    T: Validate + DeserializeOwned,
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
@@ -105,11 +106,11 @@ where
     type Rejection = Error;
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let Form(data): Form<Vec<(String, String)>> = Form::from_request(req, state)
+        let Form(data): Form<T> = Form::from_request(req, state)
             .await
             .map_err(|e| ClientError::IncorrectType(e.body_text()))?;
-
-        Ok(AnyForm(data))
+        data.validate().map_err(ClientError::Invalid)?;
+        Ok(ValidForm(data))
     }
 }
 
