@@ -3,15 +3,16 @@ use std::time::Duration;
 
 use anyhow::Context;
 use axum::extract::FromRef;
+use axum::response::Response;
 use axum::{middleware, Server};
 use dotenvy::dotenv;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
-use tower_http::trace::TraceLayer;
-use tracing::info;
+use tower_http::trace::{DefaultOnFailure, DefaultOnResponse, OnResponse, TraceLayer};
+use tracing::{info, Level, Span};
 
 use crate::auth::auth_middleware;
-use crate::error::Result;
+use crate::error::{log_embedded_errors, Result};
 use crate::router::router;
 use crate::util::{make_request_span, retry, UuidRequestId, X_REQUEST_ID};
 
@@ -74,12 +75,23 @@ async fn main() -> Result<()> {
         server_secret,
     };
 
+    let trace_layer = TraceLayer::new_for_http()
+        .make_span_with(make_request_span)
+        .on_failure(DefaultOnFailure::new().level(Level::DEBUG))
+        .on_response({
+            let default = DefaultOnResponse::new();
+            |response: &Response, latency: Duration, span: &Span| {
+                default.on_response(response, latency, span);
+                log_embedded_errors(response);
+            }
+        });
+
     let app = router()
         .layer(middleware::from_fn_with_state(
             app_context.server_secret.clone(),
             auth_middleware,
         ))
-        .layer(TraceLayer::new_for_http().make_span_with(make_request_span))
+        .layer(trace_layer)
         .layer(SetRequestIdLayer::new(
             X_REQUEST_ID.clone(),
             UuidRequestId::new(),

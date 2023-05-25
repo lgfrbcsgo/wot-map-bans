@@ -4,10 +4,11 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use sqlx::PgPool;
+use tracing::warn;
 
 use crate::api_client::ApiClient;
 use crate::auth::{create_token, TokenClaims};
-use crate::error::{Error, Result};
+use crate::error::{ClientError, Result};
 use crate::model::{
     AuthenticatePayload, AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer,
     GetCurrentMapsQuery, GetCurrentMapsResponse, GetCurrentServersResponse,
@@ -41,12 +42,13 @@ async fn create_played_map(
     .await
     .with_context(|| format!("Failed to insert played map: {:?}", payload))?;
 
-    row.map(|_| StatusCode::NO_CONTENT)
-        .ok_or(Error::UnrecognizedValue {
-            server: payload.server,
-            map: payload.map,
-            mode: payload.mode,
-        })
+    if row.is_none() {
+        warn!(
+            "Unrecognized server, map, or mode: {}, {}, {}",
+            payload.server, payload.map, payload.mode
+        )
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn get_current_maps(
@@ -91,13 +93,10 @@ async fn authenticate(
         .get_public_account_info(token_details.account_id)
         .await?;
 
-    const REQUIRED_BATTLES: u32 = 200;
-    if account_info.statistics.all.battles >= REQUIRED_BATTLES {
-        let token = create_token(token_details.account_id, &server_secret)?;
-        Ok(Json(AuthenticateResponse { token }))
-    } else {
-        Err(Error::NotEnoughBattles {
-            required: REQUIRED_BATTLES,
-        })
+    if account_info.statistics.all.battles < 200 {
+        Err(ClientError::NotEnoughBattles)?;
     }
+
+    let token = create_token(token_details.account_id, &server_secret)?;
+    Ok(Json(AuthenticateResponse { token }))
 }

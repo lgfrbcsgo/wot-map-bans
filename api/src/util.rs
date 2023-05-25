@@ -13,7 +13,7 @@ use tracing::{error_span, warn, Span};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::error::Error;
+use crate::error::{ClientError, Error};
 
 pub static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
@@ -67,8 +67,8 @@ where
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         let Json(data): Json<T> = Json::from_request(req, state)
             .await
-            .map_err(|e| Error::InvalidBodySchema(e.body_text()))?;
-        data.validate().map_err(Error::InvalidBody)?;
+            .map_err(|e| ClientError::InvalidBodySchema(e.body_text()))?;
+        data.validate().map_err(ClientError::InvalidBody)?;
         Ok(ValidJson(data))
     }
 }
@@ -86,8 +86,8 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let Query(data): Query<T> = Query::from_request_parts(parts, state)
             .await
-            .map_err(|e| Error::InvalidQuerySchema(e.body_text()))?;
-        data.validate().map_err(Error::InvalidQuery)?;
+            .map_err(|e| ClientError::InvalidQuerySchema(e.body_text()))?;
+        data.validate().map_err(ClientError::InvalidQuery)?;
         Ok(ValidQuery(data))
     }
 }

@@ -11,7 +11,7 @@ use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{Error, Result};
+use crate::error::{ClientError, Error, Result};
 use crate::ServerSecret;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -28,7 +28,7 @@ impl<S: Send + Sync> FromRequestParts<S> for TokenClaims {
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         match parts.extensions.get::<TokenClaims>() {
             Some(claims) => Ok(claims.clone()),
-            None => Err(Error::AuthRequired),
+            None => Err(ClientError::AuthRequired.into()),
         }
     }
 }
@@ -57,7 +57,7 @@ pub fn decode_token(token: &str, secret: &ServerSecret) -> Result<TokenClaims> {
         &DecodingKey::from_secret(secret.0.as_ref()),
         &Validation::default(),
     )
-    .map_err(|_| Error::InvalidBearerToken)
+    .map_err(|_| ClientError::InvalidBearerToken.into())
     .map(|data| data.claims)
 }
 
@@ -68,13 +68,16 @@ pub async fn auth_middleware<B>(
     next: Next<B>,
 ) -> Result<Response> {
     if let Some(header) = headers.get(AUTHORIZATION) {
-        let header_str = header.to_str().map_err(|_| Error::InvalidAuthHeader)?;
+        let header_str = header
+            .to_str()
+            .map_err(|_| ClientError::InvalidAuthHeader)?;
+
         match header_str.split_once(" ") {
             Some(("Bearer", token)) => {
                 let claims = decode_token(&token, &secret)?;
                 req.extensions_mut().insert(claims);
             }
-            _ => Err(Error::InvalidAuthHeader)?,
+            _ => Err(ClientError::InvalidAuthHeader)?,
         }
     }
     Ok(next.run(req).await)
