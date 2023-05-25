@@ -10,10 +10,11 @@ use crate::api_client::ApiClient;
 use crate::auth::{create_token, TokenClaims};
 use crate::error::{ClientError, Result};
 use crate::model::{
-    AuthenticatePayload, AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer,
-    GetCurrentMapsQuery, GetCurrentMapsResponse, GetCurrentServersResponse,
+    AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery,
+    GetCurrentMapsResponse, GetCurrentServersResponse,
 };
-use crate::util::{ValidJson, ValidQuery};
+use crate::openid_client::{OpenIDClient, OpenIDPayload};
+use crate::util::{ValidForm, ValidJson, ValidQuery};
 use crate::{AppContext, AppId, ServerSecret};
 
 pub fn router() -> Router<AppContext> {
@@ -21,7 +22,7 @@ pub fn router() -> Router<AppContext> {
         .route("/api/played-map", post(create_played_map))
         .route("/api/current-maps", get(get_current_maps))
         .route("/api/current-servers", get(get_current_servers))
-        .route("/api/authenticate", get(authenticate))
+        .route("/api/authenticate", post(authenticate))
 }
 
 async fn create_played_map(
@@ -83,20 +84,24 @@ async fn get_current_servers(
 async fn authenticate(
     State(app_id): State<AppId>,
     State(server_secret): State<ServerSecret>,
-    ValidJson(payload): ValidJson<AuthenticatePayload>,
+    ValidForm(payload): ValidForm<OpenIDPayload>,
 ) -> Result<Json<AuthenticateResponse>> {
-    let api_client = ApiClient::new(payload.region, app_id);
+    let openid_client = OpenIDClient::new();
+    let api_client = ApiClient::new(payload.endpoint.api_region(), app_id);
 
-    let token_details = api_client.extend_access_token(payload.access_token).await?;
+    let account = openid_client
+        .verify_id(payload)
+        .await?
+        .ok_or(ClientError::OpenIDRejected)?;
 
     let account_info = api_client
-        .get_public_account_info(token_details.account_id)
+        .get_public_account_info(account.account_id)
         .await?;
 
     if account_info.statistics.all.battles < 200 {
         Err(ClientError::NotEnoughBattles)?;
     }
 
-    let token = create_token(token_details.account_id, &server_secret)?;
+    let token = create_token(account.account_id, &server_secret)?;
     Ok(Json(AuthenticateResponse { token }))
 }

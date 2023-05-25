@@ -20,6 +20,8 @@ mod api_client;
 mod auth;
 mod error;
 mod model;
+mod openid_client;
+mod regions;
 mod router;
 mod util;
 

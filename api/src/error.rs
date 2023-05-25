@@ -21,7 +21,9 @@ pub enum ClientError {
     InvalidBearerToken,
     #[error("Authentication required")]
     AuthRequired,
-    #[error("Not enough battles.")]
+    #[error("OpenID rejected")]
+    OpenIDRejected,
+    #[error("Not enough battles")]
     NotEnoughBattles,
 }
 
@@ -33,6 +35,7 @@ impl ClientError {
             Self::ExpectedBearerToken => StatusCode::UNAUTHORIZED,
             Self::InvalidBearerToken => StatusCode::UNAUTHORIZED,
             Self::AuthRequired => StatusCode::UNAUTHORIZED,
+            Self::OpenIDRejected => StatusCode::UNAUTHORIZED,
             Self::NotEnoughBattles => StatusCode::UNAUTHORIZED,
         }
     }

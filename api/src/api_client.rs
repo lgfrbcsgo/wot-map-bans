@@ -3,70 +3,26 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Context};
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
-use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
 use crate::error::Result;
+use crate::regions::ApiRegion;
 use crate::AppId;
 
-#[derive(Debug, Deserialize)]
-pub enum Region {
-    EU,
-    NA,
-    ASIA,
-}
-
-impl Region {
-    fn get_endpoint_url(&self, endpoint: &str) -> Result<Url> {
-        let base_url = match self {
-            Region::EU => Url::parse("https://api.worldoftanks.eu"),
-            Region::NA => Url::parse("https://api.worldoftanks.com"),
-            Region::ASIA => Url::parse("https://api.worldoftanks.asia"),
-        }
-        .context("Failed to parse base URL")?;
-
-        let endpoint_url = base_url
-            .join(endpoint)
-            .with_context(|| format!("Failed to construct URL for endpoint {}", endpoint))?;
-
-        Ok(endpoint_url)
-    }
-}
-
 pub struct ApiClient {
-    region: Region,
+    region: ApiRegion,
     app_id: AppId,
     http_client: reqwest::Client,
 }
 
 impl ApiClient {
-    pub fn new(region: Region, app_id: AppId) -> Self {
+    pub fn new(region: ApiRegion, app_id: AppId) -> Self {
         Self {
             region,
             app_id,
             http_client: reqwest::Client::new(),
         }
-    }
-
-    pub async fn extend_access_token(&self, access_token: String) -> Result<AccessTokenDetails> {
-        let url = self.region.get_endpoint_url("/wot/auth/prolongate/")?;
-        let params = [
-            ("application_id", self.app_id.0.as_str()),
-            ("access_token", access_token.as_str()),
-        ];
-
-        let req = self.http_client.post(url).form(&params);
-        let res = req
-            .send()
-            .await
-            .context("Request to extend access token failed")?;
-
-        let token_detail = ApiClient::get_response_data::<AccessTokenDetails>(res)
-            .await
-            .context("Failed to extend access token")?;
-
-        Ok(token_detail)
     }
 
     pub async fn get_public_account_info(&self, account_id: u64) -> Result<AccountInfo> {
@@ -104,14 +60,6 @@ impl ApiClient {
 
         Ok(data)
     }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct AccessTokenDetails {
-    pub access_token: String,
-    pub account_id: u64,
-    #[serde(with = "ts_seconds")]
-    pub expires_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize)]

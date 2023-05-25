@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
-use crate::api_client::Region;
 use crate::error::Result;
 
 #[derive(Debug, Deserialize, Validate)]
@@ -99,13 +98,6 @@ impl GetCurrentServersResponse {
         }
         Self { total, regions }
     }
-}
-
-#[derive(Debug, Deserialize, Validate)]
-pub struct AuthenticatePayload {
-    pub region: Region,
-    #[validate(length(max = 500))]
-    pub access_token: String,
 }
 
 #[derive(Debug, Serialize)]
