@@ -48,7 +48,7 @@ macro_rules! regions {
 regions! {
     (EU, "https://eu.wargaming.net/id/openid/", "https://api.worldoftanks.eu");
     (NA, "https://na.wargaming.net/id/openid/", "https://api.worldoftanks.na");
-    (ASIA, "https://asia.wargaming.net/id/openid/", "https://api.worldoftanks.asia");
+    (Asia, "https://asia.wargaming.net/id/openid/", "https://api.worldoftanks.asia");
 }
 
 impl ApiRegion {

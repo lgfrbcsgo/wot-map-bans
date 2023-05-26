@@ -22,7 +22,7 @@ pub struct CreatePlayedMapPayload {
 
 fn validate_tier_spread(payload: &CreatePlayedMapPayload) -> Result<(), ValidationError> {
     let tier_spread = payload.top_tier - payload.bottom_tier;
-    if tier_spread < 0 || 2 < tier_spread {
+    if !(0..=2).contains(&tier_spread) {
         Err(ValidationError::new("Invalid tier spread."))?;
     }
     Ok(())

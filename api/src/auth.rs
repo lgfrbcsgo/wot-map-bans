@@ -72,9 +72,9 @@ pub async fn auth_middleware<B>(
             .to_str()
             .map_err(|_| ClientError::ExpectedBearerToken)?;
 
-        match header_str.split_once(" ") {
+        match header_str.split_once(' ') {
             Some(("Bearer", token)) => {
-                let claims = decode_token(&token, &secret)?;
+                let claims = decode_token(token, &secret)?;
                 req.extensions_mut().insert(claims);
             }
             _ => Err(ClientError::ExpectedBearerToken)?,
