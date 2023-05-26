@@ -4,7 +4,8 @@ use std::time::Duration;
 use anyhow::Context;
 use axum::extract::FromRef;
 use axum::response::Response;
-use axum::{middleware, Server};
+use axum::{middleware, Router, Server};
+use context::AppContext;
 use dotenvy::dotenv;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -18,6 +19,7 @@ use crate::util::{make_request_span, retry, UuidRequestId, X_REQUEST_ID};
 
 mod api_client;
 mod auth;
+mod context;
 mod error;
 mod model;
 mod openid_client;
@@ -25,58 +27,36 @@ mod regions;
 mod router;
 mod util;
 
-#[derive(Debug, Clone)]
-pub struct AppId(pub String);
-
-#[derive(Debug, Clone)]
-pub struct ServerSecret(pub String);
-
-#[derive(Clone, FromRef)]
-pub struct AppContext {
-    pool: PgPool,
-    app_id: AppId,
-    server_secret: ServerSecret,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
 
     tracing_subscriber::fmt::init();
 
-    let app_id = std::env::var("APP_ID")
-        .map(AppId)
-        .context("Env var `APP_ID` is not set.")?;
-
-    let server_secret = std::env::var("SERVER_SECRET")
-        .map(ServerSecret)
-        .context("Env var `SERVER_SECRET` is not set.")?;
-
-    let db_connection_str =
-        std::env::var("DATABASE_URL").context("Env var `DATABASE_URL` is not set.")?;
-
-    let pool = retry(60, Duration::from_secs(2), || {
-        info!("Connecting to database.");
-        PgPoolOptions::new()
-            .max_connections(20)
-            .acquire_timeout(Duration::from_secs(1))
-            .connect(&db_connection_str)
-    })
-    .await
-    .context("Cannot connect to database.")?;
+    info!("Initializing app context.");
+    let app_context = AppContext::init()
+        .await
+        .context("Failed to initialize app context")?;
 
     info!("Migrating database.");
     sqlx::migrate!()
-        .run(&pool)
+        .run(&app_context.pool)
         .await
         .context("Database migration failed.")?;
 
-    let app_context = AppContext {
-        pool,
-        app_id,
-        server_secret,
-    };
+    let app = configure_app(app_context);
+    let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
 
+    info!("Starting server on {}.", addr);
+    Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .context("Server failed to start up.")?;
+
+    Ok(())
+}
+
+fn configure_app(app_context: AppContext) -> Router {
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(make_request_span)
         .on_failure(DefaultOnFailure::new().level(Level::DEBUG))
@@ -88,7 +68,7 @@ async fn main() -> Result<()> {
             }
         });
 
-    let app = router()
+    router()
         .layer(middleware::from_fn_with_state(
             app_context.server_secret.clone(),
             auth_middleware,
@@ -99,14 +79,5 @@ async fn main() -> Result<()> {
             UuidRequestId::new(),
         ))
         .layer(PropagateRequestIdLayer::new(X_REQUEST_ID.clone()))
-        .with_state(app_context);
-
-    let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
-    info!("Starting server on {}.", addr);
-    Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .context("Server failed to start up.")?;
-
-    Ok(())
+        .with_state(app_context)
 }

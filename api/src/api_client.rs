@@ -6,9 +6,9 @@ use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
+use crate::context::AppId;
 use crate::error::Result;
 use crate::regions::ApiRegion;
-use crate::AppId;
 
 pub struct ApiClient {
     region: ApiRegion,

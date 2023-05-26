@@ -8,6 +8,7 @@ use tracing::warn;
 
 use crate::api_client::ApiClient;
 use crate::auth::{create_token, TokenClaims};
+use crate::context::{AppContext, AppId, ServerSecret};
 use crate::error::{ClientError, Result};
 use crate::model::{
     AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery,
@@ -15,7 +16,6 @@ use crate::model::{
 };
 use crate::openid_client::{OpenIDClient, OpenIDPayload};
 use crate::util::{ValidForm, ValidJson, ValidQuery};
-use crate::{AppContext, AppId, ServerSecret};
 
 pub fn router() -> Router<AppContext> {
     Router::new()
