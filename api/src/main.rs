@@ -31,6 +31,8 @@ async fn main() -> Result<()> {
 
     tracing_subscriber::fmt::init();
 
+    write_schemas()?;
+
     info!("Initializing app context.");
     let app_context = init_app_context()
         .await
@@ -120,4 +122,11 @@ fn configure_app(app_context: AppContext) -> Router {
         ))
         .layer(PropagateRequestIdLayer::new(X_REQUEST_ID.clone()))
         .with_state(app_context)
+}
+
+fn write_schemas() -> Result<()> {
+    let schemas = model::collect_schemas();
+    let output = serde_json::to_string_pretty(&schemas).context("Fails to serialize schemas")?;
+    std::fs::write("schema.json", output).context("Failed to write schemas")?;
+    Ok(())
 }

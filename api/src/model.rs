@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
+use schemars::gen::SchemaGenerator;
+use schemars::schema::Schema;
+use schemars::{JsonSchema, Map};
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
 use crate::error::Result;
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, JsonSchema)]
 #[validate(schema(function = "validate_tier_spread"))]
 pub struct CreatePlayedMapPayload {
     #[validate(length(max = 10))]
@@ -28,7 +31,7 @@ fn validate_tier_spread(payload: &CreatePlayedMapPayload) -> Result<(), Validati
     Ok(())
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, JsonSchema)]
 #[validate(schema(function = "validate_max_tier_goe_min_tier"))]
 pub struct GetCurrentMapsQuery {
     #[validate(length(max = 10))]
@@ -53,7 +56,7 @@ pub struct CurrentMap {
     pub count: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct GetCurrentMapsResponse {
     pub total: usize,
     pub modes: HashMap<String, HashMap<String, usize>>,
@@ -80,7 +83,7 @@ pub struct CurrentServer {
     pub count: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct GetCurrentServersResponse {
     pub total: usize,
     pub regions: HashMap<String, HashMap<String, usize>>,
@@ -100,7 +103,17 @@ impl GetCurrentServersResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct AuthenticateResponse {
     pub token: String,
+}
+
+pub fn collect_schemas() -> Map<String, Schema> {
+    let mut gen = SchemaGenerator::default();
+    gen.subschema_for::<CreatePlayedMapPayload>();
+    gen.subschema_for::<GetCurrentMapsQuery>();
+    gen.subschema_for::<GetCurrentMapsResponse>();
+    gen.subschema_for::<GetCurrentServersResponse>();
+    gen.subschema_for::<AuthenticateResponse>();
+    gen.take_definitions()
 }

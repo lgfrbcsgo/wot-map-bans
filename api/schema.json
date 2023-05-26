@@ -1,0 +1,125 @@
+{
+  "AuthenticateResponse": {
+    "type": "object",
+    "required": [
+      "token"
+    ],
+    "properties": {
+      "token": {
+        "type": "string"
+      }
+    }
+  },
+  "CreatePlayedMapPayload": {
+    "type": "object",
+    "required": [
+      "bottom_tier",
+      "map",
+      "mode",
+      "server",
+      "top_tier"
+    ],
+    "properties": {
+      "bottom_tier": {
+        "type": "integer",
+        "format": "int16",
+        "maximum": 10.0,
+        "minimum": 1.0
+      },
+      "map": {
+        "type": "string",
+        "maxLength": 50
+      },
+      "mode": {
+        "type": "string",
+        "maxLength": 50
+      },
+      "server": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "top_tier": {
+        "type": "integer",
+        "format": "int16",
+        "maximum": 10.0,
+        "minimum": 1.0
+      }
+    }
+  },
+  "GetCurrentMapsQuery": {
+    "type": "object",
+    "required": [
+      "max_tier",
+      "min_tier",
+      "server"
+    ],
+    "properties": {
+      "max_tier": {
+        "type": "integer",
+        "format": "int16",
+        "maximum": 10.0,
+        "minimum": 1.0
+      },
+      "min_tier": {
+        "type": "integer",
+        "format": "int16",
+        "maximum": 10.0,
+        "minimum": 1.0
+      },
+      "server": {
+        "type": "string",
+        "maxLength": 10
+      }
+    }
+  },
+  "GetCurrentMapsResponse": {
+    "type": "object",
+    "required": [
+      "modes",
+      "total"
+    ],
+    "properties": {
+      "modes": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
+          }
+        }
+      },
+      "total": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0.0
+      }
+    }
+  },
+  "GetCurrentServersResponse": {
+    "type": "object",
+    "required": [
+      "regions",
+      "total"
+    ],
+    "properties": {
+      "regions": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
+          }
+        }
+      },
+      "total": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0.0
+      }
+    }
+  }
+}
