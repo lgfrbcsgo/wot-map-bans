@@ -5,21 +5,19 @@ use anyhow::Context;
 use axum::extract::FromRef;
 use axum::response::Response;
 use axum::{middleware, Router, Server};
-use context::AppContext;
 use dotenvy::dotenv;
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::{DefaultOnFailure, DefaultOnResponse, OnResponse, TraceLayer};
 use tracing::{info, Level, Span};
 
 use crate::auth::auth_middleware;
 use crate::error::{log_embedded_errors, Result};
-use crate::router::router;
-use crate::util::{make_request_span, retry, UuidRequestId, X_REQUEST_ID};
+use crate::util::{make_request_span, UuidRequestId, X_REQUEST_ID};
 
 mod api_client;
 mod auth;
-mod context;
 mod error;
 mod model;
 mod openid_client;
@@ -34,7 +32,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     info!("Initializing app context.");
-    let app_context = AppContext::init()
+    let app_context = init_app_context()
         .await
         .context("Failed to initialize app context")?;
 
@@ -56,6 +54,48 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+pub struct AppId(pub String);
+
+#[derive(Debug, Clone)]
+pub struct ServerSecret(pub String);
+
+#[derive(Clone, FromRef)]
+pub struct AppContext {
+    pub pool: PgPool,
+    pub app_id: AppId,
+    pub server_secret: ServerSecret,
+}
+
+async fn init_app_context() -> Result<AppContext> {
+    let app_id = std::env::var("APP_ID")
+        .map(AppId)
+        .context("Env var `APP_ID` is not set.")?;
+
+    let server_secret = std::env::var("SERVER_SECRET")
+        .map(ServerSecret)
+        .context("Env var `SERVER_SECRET` is not set.")?;
+
+    let db_connection_str =
+        std::env::var("DATABASE_URL").context("Env var `DATABASE_URL` is not set.")?;
+
+    let pool = util::retry(60, Duration::from_secs(2), || {
+        info!("Connecting to database.");
+        PgPoolOptions::new()
+            .max_connections(20)
+            .acquire_timeout(Duration::from_secs(1))
+            .connect(&db_connection_str)
+    })
+    .await
+    .context("Cannot connect to database.")?;
+
+    Ok(AppContext {
+        pool,
+        app_id,
+        server_secret,
+    })
+}
+
 fn configure_app(app_context: AppContext) -> Router {
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(make_request_span)
@@ -68,7 +108,7 @@ fn configure_app(app_context: AppContext) -> Router {
             }
         });
 
-    router()
+    router::router()
         .layer(middleware::from_fn_with_state(
             app_context.server_secret.clone(),
             auth_middleware,

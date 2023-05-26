@@ -11,8 +11,8 @@ use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::context::ServerSecret;
 use crate::error::{ClientError, Error, Result};
+use crate::ServerSecret;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TokenClaims {
