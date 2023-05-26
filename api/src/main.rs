@@ -1,3 +1,4 @@
+use std::env;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
@@ -6,6 +7,7 @@ use axum::extract::FromRef;
 use axum::response::Response;
 use axum::{middleware, Router, Server};
 use dotenvy::dotenv;
+use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -31,7 +33,9 @@ async fn main() -> Result<()> {
 
     tracing_subscriber::fmt::init();
 
-    write_schemas()?;
+    if env::args().any(|arg| arg == "write-schema") {
+        return write_schema();
+    }
 
     info!("Initializing app context.");
     let app_context = init_app_context()
@@ -70,16 +74,16 @@ pub struct AppContext {
 }
 
 async fn init_app_context() -> Result<AppContext> {
-    let app_id = std::env::var("APP_ID")
+    let app_id = env::var("APP_ID")
         .map(AppId)
         .context("Env var `APP_ID` is not set.")?;
 
-    let server_secret = std::env::var("SERVER_SECRET")
+    let server_secret = env::var("SERVER_SECRET")
         .map(ServerSecret)
         .context("Env var `SERVER_SECRET` is not set.")?;
 
     let db_connection_str =
-        std::env::var("DATABASE_URL").context("Env var `DATABASE_URL` is not set.")?;
+        env::var("DATABASE_URL").context("Env var `DATABASE_URL` is not set.")?;
 
     let pool = util::retry(60, Duration::from_secs(2), || {
         info!("Connecting to database.");
@@ -124,9 +128,9 @@ fn configure_app(app_context: AppContext) -> Router {
         .with_state(app_context)
 }
 
-fn write_schemas() -> Result<()> {
-    let schemas = model::collect_schemas();
-    let output = serde_json::to_string_pretty(&schemas).context("Fails to serialize schemas")?;
+fn write_schema() -> Result<()> {
+    let schema = json!({ "definitions": model::collect_schemas() });
+    let output = serde_json::to_string_pretty(&schema).context("Fails to serialize schemas")?;
     std::fs::write("schema.json", output).context("Failed to write schemas")?;
     Ok(())
 }
