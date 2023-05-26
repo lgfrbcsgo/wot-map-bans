@@ -53,12 +53,12 @@ impl ApiClient {
             .await
             .context("Failed to decode response as JSON")?;
 
-        let data = match api_response {
+        match api_response {
             ApiResponse::Success { data } => Ok(data),
-            ApiResponse::Error { error } => Err(anyhow!("Received error response: {:?}", error)),
-        }?;
-
-        Ok(data)
+            ApiResponse::Error { error } => {
+                Err(anyhow!("Received error response: {:?}", error).into())
+            }
+        }
     }
 }
 
