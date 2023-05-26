@@ -85,15 +85,13 @@
           "type": "object",
           "additionalProperties": {
             "type": "integer",
-            "format": "uint",
-            "minimum": 0.0
+            "format": "int64"
           }
         }
       },
       "total": {
         "type": "integer",
-        "format": "uint",
-        "minimum": 0.0
+        "format": "int64"
       }
     }
   },
@@ -110,15 +108,13 @@
           "type": "object",
           "additionalProperties": {
             "type": "integer",
-            "format": "uint",
-            "minimum": 0.0
+            "format": "int64"
           }
         }
       },
       "total": {
         "type": "integer",
-        "format": "uint",
-        "minimum": 0.0
+        "format": "int64"
       }
     }
   }

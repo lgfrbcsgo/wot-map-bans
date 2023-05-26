@@ -58,18 +58,18 @@ pub struct CurrentMap {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct GetCurrentMapsResponse {
-    pub total: usize,
-    pub modes: HashMap<String, HashMap<String, usize>>,
+    pub total: i64,
+    pub modes: HashMap<String, HashMap<String, i64>>,
 }
 
 impl GetCurrentMapsResponse {
     pub fn from_rows(rows: Vec<CurrentMap>) -> Self {
-        let total = rows.len();
-        let mut modes: HashMap<String, HashMap<String, usize>> = HashMap::new();
+        let total = i64::try_from(rows.len()).unwrap();
+        let mut modes: HashMap<String, HashMap<String, i64>> = HashMap::new();
         for row in rows {
             if let Some(count) = row.count {
                 let maps = modes.entry(row.mode).or_insert_with(HashMap::new);
-                maps.insert(row.map, usize::try_from(count).unwrap_or(0));
+                maps.insert(row.map, count);
             }
         }
         Self { total, modes }
@@ -85,18 +85,18 @@ pub struct CurrentServer {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct GetCurrentServersResponse {
-    pub total: usize,
-    pub regions: HashMap<String, HashMap<String, usize>>,
+    pub total: i64,
+    pub regions: HashMap<String, HashMap<String, i64>>,
 }
 
 impl GetCurrentServersResponse {
     pub fn from_rows(rows: Vec<CurrentServer>) -> Self {
-        let total = rows.len();
-        let mut regions: HashMap<String, HashMap<String, usize>> = HashMap::new();
+        let total = i64::try_from(rows.len()).unwrap();
+        let mut regions: HashMap<String, HashMap<String, i64>> = HashMap::new();
         for row in rows {
             if let Some(count) = row.count {
                 let servers = regions.entry(row.region).or_insert_with(HashMap::new);
-                servers.insert(row.name, usize::try_from(count).unwrap_or(0));
+                servers.insert(row.name, count);
             }
         }
         Self { total, regions }
