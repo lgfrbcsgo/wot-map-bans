@@ -65,7 +65,7 @@ async fn get_current_maps(
     )
     .fetch_all(&pool)
     .await
-    .with_context(|| format!("Failed to get current maps: {:?}", query))?;
+    .with_context(|| format!("Failed to select current maps: {:?}", query))?;
 
     Ok(Json(GetCurrentMapsResponse::from_rows(rows)))
 }
@@ -76,7 +76,7 @@ async fn get_current_servers(
     let rows = sqlx::query_file_as!(CurrentServer, "queries/select_current_servers.sql")
         .fetch_all(&pool)
         .await
-        .context("Failed to get current servers")?;
+        .context("Failed to select current servers")?;
 
     Ok(Json(GetCurrentServersResponse::from_rows(rows)))
 }
@@ -91,12 +91,14 @@ async fn authenticate(
 
     let account = openid_client
         .verify_id(payload)
-        .await?
+        .await
+        .context("Failed to verify account with OpenID provider")?
         .ok_or(ClientError::OpenIDRejected)?;
 
     let account_info = api_client
         .get_public_account_info(account.account_id)
-        .await?;
+        .await
+        .with_context(|| format!("Failed to fetch number of battles: {:?}", account))?;
 
     if account_info.statistics.all.battles < 200 {
         Err(ClientError::NotEnoughBattles)?;

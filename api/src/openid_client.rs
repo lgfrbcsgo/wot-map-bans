@@ -30,7 +30,7 @@ impl OpenIDClient {
         let body = res
             .text()
             .await
-            .context("Failed to read verify ID response.")?;
+            .context("Failed to read check_authentication response.")?;
 
         match body.as_str() {
             "is_valid:true\nns:http://specs.openid.net/auth/2.0\n" => {
