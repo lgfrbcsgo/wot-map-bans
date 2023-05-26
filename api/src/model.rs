@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use schemars::gen::SchemaGenerator;
-use schemars::schema::Schema;
-use schemars::{JsonSchema, Map};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
@@ -108,12 +106,24 @@ pub struct AuthenticateResponse {
     pub token: String,
 }
 
-pub fn collect_schemas() -> Map<String, Schema> {
-    let mut gen = SchemaGenerator::default();
-    gen.subschema_for::<CreatePlayedMapPayload>();
-    gen.subschema_for::<GetCurrentMapsQuery>();
-    gen.subschema_for::<GetCurrentMapsResponse>();
-    gen.subschema_for::<GetCurrentServersResponse>();
-    gen.subschema_for::<AuthenticateResponse>();
-    gen.take_definitions()
+#[cfg(test)]
+mod tests {
+    use crate::model::*;
+    use schemars::gen::SchemaGenerator;
+    use serde_json::json;
+
+    #[test]
+    fn write_schema() {
+        let mut gen = SchemaGenerator::default();
+
+        gen.subschema_for::<CreatePlayedMapPayload>();
+        gen.subschema_for::<GetCurrentMapsQuery>();
+        gen.subschema_for::<GetCurrentMapsResponse>();
+        gen.subschema_for::<GetCurrentServersResponse>();
+        gen.subschema_for::<AuthenticateResponse>();
+
+        let schema = json!({ "definitions": gen.take_definitions() });
+        let output = serde_json::to_string_pretty(&schema).unwrap();
+        std::fs::write("schema.json", output).unwrap();
+    }
 }

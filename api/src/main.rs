@@ -7,7 +7,6 @@ use axum::extract::FromRef;
 use axum::response::Response;
 use axum::{middleware, Router, Server};
 use dotenvy::dotenv;
-use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
@@ -32,10 +31,6 @@ async fn main() -> Result<()> {
     dotenv().ok();
 
     tracing_subscriber::fmt::init();
-
-    if env::args().any(|arg| arg == "write-schema") {
-        return write_schema();
-    }
 
     info!("Initializing app context.");
     let app_context = init_app_context()
@@ -126,11 +121,4 @@ fn configure_app(app_context: AppContext) -> Router {
         ))
         .layer(PropagateRequestIdLayer::new(X_REQUEST_ID.clone()))
         .with_state(app_context)
-}
-
-fn write_schema() -> Result<()> {
-    let schema = json!({ "definitions": model::collect_schemas() });
-    let output = serde_json::to_string_pretty(&schema).context("Fails to serialize schemas")?;
-    std::fs::write("schema.json", output).context("Failed to write schemas")?;
-    Ok(())
 }
