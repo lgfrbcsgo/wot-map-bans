@@ -6,15 +6,15 @@ use axum::{Json, Router};
 use sqlx::PgPool;
 use tracing::warn;
 
-use crate::api_client::ApiClient;
 use crate::auth::{create_token, TokenClaims};
 use crate::error::{ClientError, Result};
 use crate::model::{
     AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery,
     GetCurrentMapsResponse, GetCurrentServersResponse,
 };
-use crate::openid_client::{OpenIDClient, OpenIDPayload};
-use crate::util::{ValidForm, ValidJson, ValidQuery};
+use crate::util::validation::{ValidForm, ValidJson, ValidQuery};
+use crate::wg::api_client::ApiClient;
+use crate::wg::openid_client::{OpenIDClient, OpenIDPayload};
 use crate::{AppContext, AppId, ServerSecret};
 
 pub fn router() -> Router<AppContext> {
@@ -87,7 +87,7 @@ async fn authenticate(
     ValidForm(payload): ValidForm<OpenIDPayload>,
 ) -> Result<Json<AuthenticateResponse>> {
     let openid_client = OpenIDClient::new();
-    let api_client = ApiClient::new(payload.endpoint.api_region(), app_id);
+    let api_client = ApiClient::new(payload.endpoint.api_realm(), app_id);
 
     let account = openid_client
         .verify_id(payload)

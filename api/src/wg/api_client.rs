@@ -7,26 +7,26 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
 use crate::error::Result;
-use crate::regions::ApiRegion;
+use crate::wg::regions::ApiRealm;
 use crate::AppId;
 
 pub struct ApiClient {
-    region: ApiRegion,
+    realm: ApiRealm,
     app_id: AppId,
     http_client: reqwest::Client,
 }
 
 impl ApiClient {
-    pub fn new(region: ApiRegion, app_id: AppId) -> Self {
+    pub fn new(realm: ApiRealm, app_id: AppId) -> Self {
         Self {
-            region,
+            realm,
             app_id,
             http_client: reqwest::Client::new(),
         }
     }
 
     pub async fn get_public_account_info(&self, account_id: u64) -> Result<AccountInfo> {
-        let url = self.region.get_endpoint_url("/wot/account/info/")?;
+        let url = self.realm.get_endpoint_url("/wot/account/info/")?;
         let params = [
             ("application_id", &self.app_id.0),
             ("account_id", &account_id.to_string()),

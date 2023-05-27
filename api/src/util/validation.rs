@@ -1,55 +1,12 @@
-use std::fmt::Display;
-use std::future::Future;
-use std::time::Duration;
-
-use axum::body::{Body, HttpBody};
+use axum::body::HttpBody;
 use axum::extract::{FromRequest, FromRequestParts, Query};
 use axum::http::request::Parts;
-use axum::http::{HeaderName, HeaderValue, Request};
+use axum::http::Request;
 use axum::{async_trait, BoxError, Form, Json};
 use serde::de::DeserializeOwned;
-use tower_http::request_id::{MakeRequestId, RequestId};
-use tracing::{error_span, warn, Span};
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::error::{ClientError, Error};
-
-pub static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
-
-#[derive(Clone)]
-pub struct UuidRequestId {}
-
-impl UuidRequestId {
-    pub fn new() -> Self {
-        UuidRequestId {}
-    }
-}
-
-impl MakeRequestId for UuidRequestId {
-    fn make_request_id<B>(&mut self, _request: &Request<B>) -> Option<RequestId> {
-        let uuid = Uuid::new_v4().to_string();
-        let header_value = HeaderValue::from_str(uuid.as_str()).ok()?;
-        Some(header_value.into())
-    }
-}
-
-pub fn make_request_span(request: &Request<Body>) -> Span {
-    if let Some(request_id) = request.headers().get(&X_REQUEST_ID) {
-        error_span!("request",
-            request_id = ?request_id,
-            method = %request.method(),
-            uri = %request.uri(),
-            version = ?request.version(),
-        )
-    } else {
-        error_span!("request",
-            method = %request.method(),
-            uri = %request.uri(),
-            version = ?request.version(),
-        )
-    }
-}
 
 pub struct ValidJson<T>(pub T);
 
@@ -111,27 +68,5 @@ where
             .map_err(|e| ClientError::IncorrectType(e.body_text()))?;
         data.validate().map_err(ClientError::Invalid)?;
         Ok(ValidForm(data))
-    }
-}
-
-pub async fn retry<T, E: Display, Fut: Future<Output = Result<T, E>>, F: Fn() -> Fut>(
-    mut retries: u8,
-    interval: Duration,
-    func: F,
-) -> Result<T, E> {
-    loop {
-        let result = func().await;
-        match result {
-            Ok(v) => return Ok(v),
-            Err(e) => {
-                if retries == 0 {
-                    return Err(e);
-                } else {
-                    warn!("Retrying {} more times. Error: {}", retries, e);
-                    retries -= 1;
-                    tokio::time::sleep(interval).await;
-                }
-            }
-        }
     }
 }

@@ -12,19 +12,17 @@ use sqlx::PgPool;
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::{DefaultOnFailure, DefaultOnResponse, OnResponse, TraceLayer};
 use tracing::{info, Level, Span};
+use util::request_id::{make_request_span, UuidRequestId, X_REQUEST_ID};
 
 use crate::auth::auth_middleware;
 use crate::error::{log_embedded_errors, Result};
-use crate::util::{make_request_span, UuidRequestId, X_REQUEST_ID};
 
-mod api_client;
 mod auth;
 mod error;
 mod model;
-mod openid_client;
-mod regions;
 mod router;
 mod util;
+mod wg;
 
 #[tokio::main]
 async fn main() -> Result<()> {

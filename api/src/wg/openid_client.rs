@@ -8,7 +8,7 @@ use url::Url;
 use validator::Validate;
 
 use crate::error::Result;
-use crate::regions::OpenIDProvider;
+use crate::wg::regions::OpenIDEndpoint;
 
 pub struct OpenIDClient {
     http_client: reqwest::Client,
@@ -67,7 +67,7 @@ pub struct OpenIDPayload {
     #[serde(rename = "openid.mode")]
     pub mode: String,
     #[serde(rename = "openid.op_endpoint")]
-    pub endpoint: OpenIDProvider,
+    pub endpoint: OpenIDEndpoint,
     #[serde(rename = "openid.identity")]
     pub identity: Url,
     #[serde(flatten)]
