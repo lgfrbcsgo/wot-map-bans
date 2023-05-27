@@ -108,12 +108,12 @@ pub struct AuthenticateResponse {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::*;
     use schemars::gen::SchemaGenerator;
-    use serde_json::json;
+
+    use crate::model::*;
 
     #[test]
-    fn write_schema() {
+    fn write_schemas() {
         let mut gen = SchemaGenerator::default();
 
         gen.subschema_for::<CreatePlayedMapPayload>();
@@ -122,8 +122,9 @@ mod tests {
         gen.subschema_for::<GetCurrentServersResponse>();
         gen.subschema_for::<AuthenticateResponse>();
 
-        let schema = json!({ "definitions": gen.take_definitions() });
-        let output = serde_json::to_string_pretty(&schema).unwrap();
-        std::fs::write("schema.json", output).unwrap();
+        for (name, schema) in gen.take_definitions() {
+            let output = serde_json::to_string_pretty(&schema).unwrap();
+            std::fs::write(format!("schemas/{}.json", name), output).unwrap();
+        }
     }
 }

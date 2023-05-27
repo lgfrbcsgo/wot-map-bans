@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "required": [
+    "regions",
+    "total"
+  ],
+  "properties": {
+    "regions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "total": {
+      "type": "integer",
+      "format": "int64"
+    }
+  }
+}
