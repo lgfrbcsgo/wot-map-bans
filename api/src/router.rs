@@ -12,9 +12,9 @@ use crate::model::{
     AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery,
     GetCurrentMapsResponse, GetCurrentServersResponse,
 };
+use crate::service::api_client::ApiClient;
+use crate::service::openid_client::{OpenIDClient, OpenIDPayload};
 use crate::util::validation::{ValidForm, ValidJson, ValidQuery};
-use crate::wg::api_client::ApiClient;
-use crate::wg::openid_client::{OpenIDClient, OpenIDPayload};
 use crate::{AppContext, AppId, ServerSecret};
 
 pub fn router() -> Router<AppContext> {

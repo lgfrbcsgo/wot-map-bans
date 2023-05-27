@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
 use crate::error::Result;
-use crate::wg::regions::ApiRealm;
+use crate::service::regions::ApiRealm;
 use crate::AppId;
 
 pub struct ApiClient {

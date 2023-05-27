@@ -21,8 +21,8 @@ mod auth;
 mod error;
 mod model;
 mod router;
+mod service;
 mod util;
-mod wg;
 
 #[tokio::main]
 async fn main() -> Result<()> {
