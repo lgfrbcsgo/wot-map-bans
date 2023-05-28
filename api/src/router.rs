@@ -9,8 +9,8 @@ use tracing::warn;
 use crate::auth::{create_token, TokenClaims};
 use crate::error::{ClientError, Result};
 use crate::model::{
-    AuthenticateResponse, CreatePlayedMapPayload, CurrentMap, CurrentServer, GetCurrentMapsQuery,
-    GetCurrentMapsResponse, GetCurrentServersResponse,
+    AuthenticateResponse, CurrentMap, CurrentServer, GetCurrentMapsQuery, GetCurrentMapsResponse,
+    GetCurrentServersResponse, ReportPlayedMapPayload,
 };
 use crate::service::api_client::ApiClient;
 use crate::service::openid_client::{OpenIDClient, OpenIDPayload};
@@ -19,16 +19,16 @@ use crate::{AppContext, AppId, ServerSecret};
 
 pub fn router() -> Router<AppContext> {
     Router::new()
-        .route("/api/played-map", post(create_played_map))
+        .route("/api/played-map", post(report_played_map))
         .route("/api/current-maps", get(get_current_maps))
         .route("/api/current-servers", get(get_current_servers))
         .route("/api/authenticate", post(authenticate))
 }
 
-async fn create_played_map(
+async fn report_played_map(
     State(pool): State<PgPool>,
     claims: TokenClaims,
-    ValidJson(payload): ValidJson<CreatePlayedMapPayload>,
+    ValidJson(payload): ValidJson<ReportPlayedMapPayload>,
 ) -> Result<StatusCode> {
     let row = sqlx::query_file!(
         "queries/insert_played_map.sql",
