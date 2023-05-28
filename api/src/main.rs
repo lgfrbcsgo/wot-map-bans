@@ -4,11 +4,13 @@ use std::time::Duration;
 
 use anyhow::Context;
 use axum::extract::FromRef;
+use axum::http::HeaderValue;
 use axum::response::Response;
 use axum::{middleware, Router, Server};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use tower_http::cors::{AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::{DefaultOnFailure, DefaultOnResponse, OnResponse, TraceLayer};
 use tracing::{info, Level, Span};
@@ -96,6 +98,13 @@ async fn init_app_context() -> Result<AppContext> {
 }
 
 fn configure_app(app_context: AppContext) -> Router {
+    let cors_layer = CorsLayer::new()
+        .allow_methods(AllowMethods::any())
+        .allow_origin(AllowOrigin::list([
+            HeaderValue::from_str("http://localhost:3000").unwrap(),
+            HeaderValue::from_str("https://lgfrbcsgo.github.io").unwrap(),
+        ]));
+
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(make_request_span)
         .on_failure(DefaultOnFailure::new().level(Level::DEBUG))
@@ -112,6 +121,7 @@ fn configure_app(app_context: AppContext) -> Router {
             app_context.server_secret.clone(),
             auth_middleware,
         ))
+        .layer(cors_layer)
         .layer(trace_layer)
         .layer(SetRequestIdLayer::new(
             X_REQUEST_ID.clone(),
