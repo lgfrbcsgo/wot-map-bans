@@ -54,11 +54,11 @@ pub struct CurrentMap {
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetCurrentMapsResponse {
+pub struct CurrentMaps {
     pub modes: HashMap<String, Vec<CurrentMap>>,
 }
 
-impl GetCurrentMapsResponse {
+impl CurrentMaps {
     pub fn from_rows(rows: Vec<CurrentMap>) -> Self {
         let mut modes = HashMap::new();
         rows.into_iter().for_each(|row| {
@@ -77,11 +77,11 @@ pub struct CurrentServer {
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetCurrentServersResponse {
+pub struct CurrentServers {
     pub regions: HashMap<String, Vec<CurrentServer>>,
 }
 
-impl GetCurrentServersResponse {
+impl CurrentServers {
     pub fn from_rows(rows: Vec<CurrentServer>) -> Self {
         let mut regions = HashMap::new();
         rows.into_iter().for_each(|row| {

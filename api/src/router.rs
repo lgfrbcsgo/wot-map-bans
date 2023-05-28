@@ -9,8 +9,8 @@ use tracing::warn;
 use crate::auth::{create_token, TokenClaims};
 use crate::error::{ClientError, Result};
 use crate::model::{
-    AuthenticateResponse, CurrentMap, CurrentServer, GetCurrentMapsQuery, GetCurrentMapsResponse,
-    GetCurrentServersResponse, ReportPlayedMapBody,
+    AuthenticateResponse, CurrentMap, CurrentMaps, CurrentServer, CurrentServers,
+    GetCurrentMapsQuery, ReportPlayedMapBody,
 };
 use crate::service::api_client::ApiClient;
 use crate::service::openid_client::{OpenIDClient, OpenIDParams};
@@ -55,7 +55,7 @@ async fn report_played_map(
 async fn get_current_maps(
     State(pool): State<PgPool>,
     ValidQuery(query): ValidQuery<GetCurrentMapsQuery>,
-) -> Result<Json<GetCurrentMapsResponse>> {
+) -> Result<Json<CurrentMaps>> {
     let rows = sqlx::query_file_as!(
         CurrentMap,
         "queries/select_current_maps.sql",
@@ -67,18 +67,16 @@ async fn get_current_maps(
     .await
     .with_context(|| format!("Failed to select current maps: {:?}", query))?;
 
-    Ok(Json(GetCurrentMapsResponse::from_rows(rows)))
+    Ok(Json(CurrentMaps::from_rows(rows)))
 }
 
-async fn get_current_servers(
-    State(pool): State<PgPool>,
-) -> Result<Json<GetCurrentServersResponse>> {
+async fn get_current_servers(State(pool): State<PgPool>) -> Result<Json<CurrentServers>> {
     let rows = sqlx::query_file_as!(CurrentServer, "queries/select_current_servers.sql")
         .fetch_all(&pool)
         .await
         .context("Failed to select current servers")?;
 
-    Ok(Json(GetCurrentServersResponse::from_rows(rows)))
+    Ok(Json(CurrentServers::from_rows(rows)))
 }
 
 async fn authenticate(
