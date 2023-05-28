@@ -11,7 +11,7 @@ import {
   type,
   unknown,
 } from "superstruct"
-import { customError, errorWrapper } from "../util"
+import { customError, wrapperError } from "../util"
 
 export interface Api {
   reportPlayedMap(token: string, body: ReportPlayedMapBody): Promise<void>
@@ -138,4 +138,4 @@ export const ApiResponseError = customError(
   (detail: ErrorResponse) => `API returned error ${detail.error}`,
 )
 
-export const ApiError = errorWrapper("ApiError")
+export const ApiError = wrapperError("ApiError")

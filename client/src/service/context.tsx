@@ -1,9 +1,11 @@
 import { children as useChildren, Component, createContext, JSX, useContext } from "solid-js"
 import { Api } from "./api"
 import { ErrorHandler } from "./errorHandler"
+import { Auth } from "./auth"
 
 export interface Services {
   api: Api
+  auth: Auth
   errorHandler: ErrorHandler
 }
 

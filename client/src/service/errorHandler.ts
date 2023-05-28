@@ -1,20 +1,17 @@
 import { Accessor, createMemo, createSignal } from "solid-js"
-import { createEventListener } from "../util"
+import { createEventListener, wrapperError } from "../util"
+import { Auth } from "./auth"
+import { ApiResponseError } from "./api"
 
 export interface ErrorHandler {
-  errors: Accessor<ErrorMessage[]>
-  error: Accessor<ErrorMessage | undefined>
+  errors: Accessor<Error[]>
+  error: Accessor<Error | undefined>
   dropError(): void
   handleError(err: unknown): void
 }
 
-export interface ErrorMessage {
-  title: string
-  detail?: string
-}
-
-export function createErrorHandler(): ErrorHandler {
-  const [errors, setErrors] = createSignal<ErrorMessage[]>([])
+export function createErrorHandler(auth: Auth): ErrorHandler {
+  const [errors, setErrors] = createSignal<Error[]>([])
   const error = createMemo(() => errors().at(0))
 
   function dropError() {
@@ -22,7 +19,10 @@ export function createErrorHandler(): ErrorHandler {
   }
 
   function handleError(err: unknown) {
-    setErrors(prev => [...prev, toErrorMessage(err)])
+    if (err instanceof ApiResponseError && err.detail.error === "InvalidBearerToken") {
+      auth.invalidateToken()
+    }
+    setErrors(prev => [...prev, toError(err)])
   }
 
   createEventListener("error", e => handleError(e.error))
@@ -31,6 +31,12 @@ export function createErrorHandler(): ErrorHandler {
   return { errors, error, dropError, handleError }
 }
 
-function toErrorMessage(_err: unknown): ErrorMessage {
-  return { title: "Something went wrong" } // TODO
+export const ThrownValue = wrapperError("ThrownValue")
+
+function toError(err: unknown): Error {
+  if (err instanceof Error) {
+    return err
+  } else {
+    return new ThrownValue("A value was thrown", err)
+  }
 }
