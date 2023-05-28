@@ -11,7 +11,7 @@ import {
   type,
   unknown,
 } from "superstruct"
-import { BaseError } from "../util"
+import { customError, errorWrapper } from "../util"
 
 export interface Api {
   reportPlayedMap(token: string, body: ReportPlayedMapBody): Promise<void>
@@ -56,20 +56,20 @@ export function createApi(baseUrl: URL): Api {
   }
 
   async function expectJsonResponse<T>(res: Response, Type: Struct<T>) {
-    const json = await ApiError.try(() => res.json())
+    const json = await ApiError.try("Unexpected response type", () => res.json())
     if (res.ok) {
-      return ApiError.try(() => mask(json, Type))
+      return ApiError.try("Unexpected API response", () => mask(json, Type))
     } else {
-      const errorResponse = ApiError.try(() => mask(json, ErrorResponse))
-      throw new ApiError({ errorResponse })
+      const errorResponse = ApiError.try("Unexpected API response", () => mask(json, ErrorResponse))
+      throw new ApiResponseError(errorResponse)
     }
   }
 
   async function expectNoResponse<T>(res: Response) {
     if (!res.ok) {
-      const json = await ApiError.try(() => res.json())
-      const errorResponse = ApiError.try(() => mask(json, ErrorResponse))
-      throw new ApiError({ errorResponse })
+      const json = await ApiError.try("Unexpected response type", () => res.json())
+      const errorResponse = ApiError.try("Unexpected API response", () => mask(json, ErrorResponse))
+      throw new ApiResponseError(errorResponse)
     }
   }
 
@@ -133,14 +133,9 @@ const ErrorResponse = type({
   detail: optional(unknown()),
 })
 
-export class ApiError extends BaseError {
-  readonly errorResponse?: ErrorResponse
-  readonly cause?: unknown
+export const ApiResponseError = customError(
+  "ApiResponseError",
+  (detail: ErrorResponse) => `API returned error ${detail.error}`,
+)
 
-  constructor(options: { errorResponse?: ErrorResponse; cause?: unknown }) {
-    super("Failed to communicate with the API.")
-    this.name = "ApiError"
-    this.errorResponse = options.errorResponse
-    this.cause = options.cause
-  }
-}
+export const ApiError = errorWrapper("ApiError")
