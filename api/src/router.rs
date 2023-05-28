@@ -87,7 +87,7 @@ async fn authenticate(
     ValidForm(payload): ValidForm<OpenIDPayload>,
 ) -> Result<Json<AuthenticateResponse>> {
     let openid_client = OpenIDClient::new();
-    let api_client = ApiClient::new(payload.endpoint.api_realm(), app_id);
+    let api_client = ApiClient::new(payload.endpoint.region(), app_id);
 
     let account = openid_client
         .verify_id(payload)

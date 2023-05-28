@@ -8,7 +8,7 @@ use url::Url;
 use validator::Validate;
 
 use crate::error::Result;
-use crate::service::regions::OpenIDEndpoint;
+use crate::service::region::OpenIDEndpoint;
 
 pub struct OpenIDClient {
     http_client: reqwest::Client,

@@ -25,28 +25,28 @@ macro_rules! regions {
                 }
             }
 
-            pub fn api_realm(&self) -> ApiRealm {
+            pub fn region(&self) -> Region {
                 match &self {
-                    $(Self::$code => ApiRealm::$code,)+
+                    $(Self::$code => Region::$code,)+
                 }
             }
         }
 
         #[derive(Debug, Serialize, Deserialize)]
-        pub enum ApiRealm {
+        pub enum Region {
             $($code,)+
         }
 
-        impl ApiRealm {
-            pub fn url(&self) -> Url {
+        impl Region {
+            pub fn api_url(&self) -> Url {
                 match self {
                     $(Self::$code => Url::parse($api_url).unwrap(),)+
                 }
             }
 
-            pub fn get_endpoint_url(&self, endpoint: &str) -> Result<Url> {
+            pub fn get_api_endpoint(&self, endpoint: &str) -> Result<Url> {
                 let endpoint_url = self
-                    .url()
+                    .api_url()
                     .join(endpoint)
                     .with_context(|| format!("Failed to construct URL for endpoint {}", endpoint))?;
 
