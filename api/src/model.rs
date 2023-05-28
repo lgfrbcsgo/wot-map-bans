@@ -7,7 +7,7 @@ use crate::error::Result;
 
 #[derive(Debug, Deserialize, Validate)]
 #[validate(schema(function = "validate_tier_spread"))]
-pub struct ReportPlayedMapPayload {
+pub struct ReportPlayedMapBody {
     #[validate(length(max = 10))]
     pub server: String,
     #[validate(length(max = 50))]
@@ -20,8 +20,8 @@ pub struct ReportPlayedMapPayload {
     pub top_tier: i16,
 }
 
-fn validate_tier_spread(payload: &ReportPlayedMapPayload) -> Result<(), ValidationError> {
-    let tier_spread = payload.top_tier - payload.bottom_tier;
+fn validate_tier_spread(body: &ReportPlayedMapBody) -> Result<(), ValidationError> {
+    let tier_spread = body.top_tier - body.bottom_tier;
     if !(0..=2).contains(&tier_spread) {
         Err(ValidationError::new("Invalid tier spread."))?;
     }

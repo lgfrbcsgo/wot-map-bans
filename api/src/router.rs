@@ -10,10 +10,10 @@ use crate::auth::{create_token, TokenClaims};
 use crate::error::{ClientError, Result};
 use crate::model::{
     AuthenticateResponse, CurrentMap, CurrentServer, GetCurrentMapsQuery, GetCurrentMapsResponse,
-    GetCurrentServersResponse, ReportPlayedMapPayload,
+    GetCurrentServersResponse, ReportPlayedMapBody,
 };
 use crate::service::api_client::ApiClient;
-use crate::service::openid_client::{OpenIDClient, OpenIDPayload};
+use crate::service::openid_client::{OpenIDClient, OpenIDParams};
 use crate::util::validation::{ValidForm, ValidJson, ValidQuery};
 use crate::{AppContext, AppId, ServerSecret};
 
@@ -28,25 +28,25 @@ pub fn router() -> Router<AppContext> {
 async fn report_played_map(
     State(pool): State<PgPool>,
     claims: TokenClaims,
-    ValidJson(payload): ValidJson<ReportPlayedMapPayload>,
+    ValidJson(body): ValidJson<ReportPlayedMapBody>,
 ) -> Result<StatusCode> {
     let row = sqlx::query_file!(
         "queries/insert_played_map.sql",
         claims.sub,
-        payload.server,
-        payload.map,
-        payload.mode,
-        payload.bottom_tier,
-        payload.top_tier
+        body.server,
+        body.map,
+        body.mode,
+        body.bottom_tier,
+        body.top_tier
     )
     .fetch_optional(&pool)
     .await
-    .with_context(|| format!("Failed to insert played map: {:?}", payload))?;
+    .with_context(|| format!("Failed to insert played map: {:?}", body))?;
 
     if row.is_none() {
         warn!(
             "Unrecognized server, map, or mode: {}, {}, {}",
-            payload.server, payload.map, payload.mode
+            body.server, body.map, body.mode
         )
     }
     Ok(StatusCode::NO_CONTENT)
@@ -84,13 +84,13 @@ async fn get_current_servers(
 async fn authenticate(
     State(app_id): State<AppId>,
     State(server_secret): State<ServerSecret>,
-    ValidForm(payload): ValidForm<OpenIDPayload>,
+    ValidForm(params): ValidForm<OpenIDParams>,
 ) -> Result<Json<AuthenticateResponse>> {
     let openid_client = OpenIDClient::new();
-    let api_client = ApiClient::new(payload.endpoint.region(), app_id);
+    let api_client = ApiClient::new(params.endpoint.region(), app_id);
 
     let account = openid_client
-        .verify_id(payload)
+        .verify_id(params)
         .await
         .context("Failed to verify account with OpenID provider")?
         .ok_or(ClientError::OpenIDRejected)?;

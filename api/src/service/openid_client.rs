@@ -21,7 +21,7 @@ impl OpenIDClient {
         }
     }
 
-    pub async fn verify_id(&self, mut id_res: OpenIDPayload) -> Result<Option<VerifiedAccount>> {
+    pub async fn verify_id(&self, mut id_res: OpenIDParams) -> Result<Option<VerifiedAccount>> {
         id_res.mode = "check_authentication".into();
 
         let req = self.http_client.post(id_res.endpoint.url()).form(&id_res);
@@ -63,7 +63,7 @@ impl OpenIDClient {
 }
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
-pub struct OpenIDPayload {
+pub struct OpenIDParams {
     #[serde(rename = "openid.mode")]
     pub mode: String,
     #[serde(rename = "openid.op_endpoint")]
