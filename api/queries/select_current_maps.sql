@@ -10,4 +10,5 @@ WITH current_map AS (
 SELECT map.code as map, mode.code as mode, current_map.count
 FROM current_map
   INNER JOIN mode ON current_map.mode_id = mode.id
-  INNER JOIN map ON current_map.map_id = map.id;
+  INNER JOIN map ON current_map.map_id = map.id
+ORDER BY current_map.count DESC;

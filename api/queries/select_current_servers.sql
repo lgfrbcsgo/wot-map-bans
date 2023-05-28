@@ -7,3 +7,4 @@ WITH current_server AS (
 SELECT server.name, server.region, current_server.count
 FROM current_server
   INNER JOIN server ON current_server.server_id = server.id
+ORDER BY current_server.count DESC;

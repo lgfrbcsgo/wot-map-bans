@@ -46,7 +46,7 @@ fn validate_max_tier_goe_min_tier(payload: &GetCurrentMapsQuery) -> Result<(), V
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CurrentMap {
     pub map: String,
     pub mode: String,
@@ -55,25 +55,21 @@ pub struct CurrentMap {
 
 #[derive(Debug, Serialize)]
 pub struct GetCurrentMapsResponse {
-    pub total: i64,
-    pub modes: HashMap<String, HashMap<String, i64>>,
+    pub modes: HashMap<String, Vec<CurrentMap>>,
 }
 
 impl GetCurrentMapsResponse {
     pub fn from_rows(rows: Vec<CurrentMap>) -> Self {
-        let total = i64::try_from(rows.len()).unwrap();
-        let mut modes: HashMap<String, HashMap<String, i64>> = HashMap::new();
-        for row in rows {
-            if let Some(count) = row.count {
-                let maps = modes.entry(row.mode).or_insert_with(HashMap::new);
-                maps.insert(row.map, count);
-            }
-        }
-        Self { total, modes }
+        let mut modes = HashMap::new();
+        rows.into_iter().for_each(|row| {
+            let maps = modes.entry(row.mode.clone()).or_insert_with(Vec::new);
+            maps.push(row);
+        });
+        Self { modes }
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CurrentServer {
     pub name: String,
     pub region: String,
@@ -82,21 +78,17 @@ pub struct CurrentServer {
 
 #[derive(Debug, Serialize)]
 pub struct GetCurrentServersResponse {
-    pub total: i64,
-    pub regions: HashMap<String, HashMap<String, i64>>,
+    pub regions: HashMap<String, Vec<CurrentServer>>,
 }
 
 impl GetCurrentServersResponse {
     pub fn from_rows(rows: Vec<CurrentServer>) -> Self {
-        let total = i64::try_from(rows.len()).unwrap();
-        let mut regions: HashMap<String, HashMap<String, i64>> = HashMap::new();
-        for row in rows {
-            if let Some(count) = row.count {
-                let servers = regions.entry(row.region).or_insert_with(HashMap::new);
-                servers.insert(row.name, count);
-            }
-        }
-        Self { total, regions }
+        let mut regions = HashMap::new();
+        rows.into_iter().for_each(|row| {
+            let servers = regions.entry(row.region.clone()).or_insert_with(Vec::new);
+            servers.push(row);
+        });
+        Self { regions }
     }
 }
 

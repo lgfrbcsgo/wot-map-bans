@@ -1,5 +1,35 @@
 {
   "db": "PostgreSQL",
+  "163b7e8753f184af855815df0d36a2d7d12fb180153955c6207751d5e5bb5117": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "region",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "count",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "WITH current_server AS (\n  SELECT server_id, count(DISTINCT user_id) as count\n  FROM played_map\n  WHERE time > now() - INTERVAL '1 hour'\n  GROUP BY server_id\n)\nSELECT server.name, server.region, current_server.count\nFROM current_server\n  INNER JOIN server ON current_server.server_id = server.id\nORDER BY current_server.count DESC;"
+  },
   "41448e2696337776133c1ce86a215a19ce22eebe34359f3bcb663a806572a24e": {
     "describe": {
       "columns": [
@@ -25,7 +55,7 @@
     },
     "query": "INSERT INTO played_map(user_id, server_id, map_id, mode_id, bottom_tier, top_tier)\nSELECT $1, server.id, map.id, mode.id, $5, $6\nFROM server, map, mode\nWHERE server.name = $2 AND map.code = $3 AND mode.code = $4\nRETURNING played_map.time;"
   },
-  "b65d444d3680cac4772ee1448a2a1ec48690e2d43968ebb6bafc390aa5eaefdc": {
+  "e10a75e7b19d1de4ceced79abc14d4e403959ffc0d5e7f9ae6c71d67d37ba246": {
     "describe": {
       "columns": [
         {
@@ -57,36 +87,6 @@
         ]
       }
     },
-    "query": "WITH current_map AS (\n  SELECT map_id, mode_id, count(DISTINCT user_id) as count\n  FROM played_map\n  WHERE server_id = (SELECT id FROM server WHERE name = $1)\n    AND $2 <= top_tier\n    AND bottom_tier <= $3\n    AND time > now() - INTERVAL '1 hour'\n  GROUP BY map_id, mode_id\n)\nSELECT map.code as map, mode.code as mode, current_map.count\nFROM current_map\n  INNER JOIN mode ON current_map.mode_id = mode.id\n  INNER JOIN map ON current_map.map_id = map.id;\n"
-  },
-  "e2cfbb439ba17d087ea372762e6e32a2d6818f54d84ec823aab273e4ef660755": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "region",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "count",
-          "ordinal": 2,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "WITH current_server AS (\n  SELECT server_id, count(DISTINCT user_id) as count\n  FROM played_map\n  WHERE time > now() - INTERVAL '1 hour'\n  GROUP BY server_id\n)\nSELECT server.name, server.region, current_server.count\nFROM current_server\n  INNER JOIN server ON current_server.server_id = server.id"
+    "query": "WITH current_map AS (\n  SELECT map_id, mode_id, count(DISTINCT user_id) as count\n  FROM played_map\n  WHERE server_id = (SELECT id FROM server WHERE name = $1)\n    AND $2 <= top_tier\n    AND bottom_tier <= $3\n    AND time > now() - INTERVAL '1 hour'\n  GROUP BY map_id, mode_id\n)\nSELECT map.code as map, mode.code as mode, current_map.count\nFROM current_map\n  INNER JOIN mode ON current_map.mode_id = mode.id\n  INNER JOIN map ON current_map.map_id = map.id\nORDER BY current_map.count DESC;\n"
   }
 }
