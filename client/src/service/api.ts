@@ -4,11 +4,11 @@ import {
   Infer,
   mask,
   number,
+  object,
   optional,
   record,
   string,
   Struct,
-  type,
   unknown,
 } from "superstruct"
 import { customError, wrapperError } from "../util/error"
@@ -23,6 +23,7 @@ export interface Api {
 export function createApi(baseUrl: URL): Api {
   async function reportPlayedMap(token: string, body: ReportPlayedMapBody) {
     const url = new URL("/api/played-map", baseUrl)
+    body = mask(body, ReportPlayedMapBody)
     const res = await fetch(url, {
       method: "POST",
       headers: { "authorization": `Bearer ${token}`, "content-type": "application/json" },
@@ -33,6 +34,7 @@ export function createApi(baseUrl: URL): Api {
 
   async function getCurrentMaps(query: GetCurrentMapsQuery) {
     const url = new URL("/api/current-maps", baseUrl)
+    query = mask(query, GetCurrentMapsQuery)
     for (const [key, value] of Object.entries(query)) {
       url.searchParams.set(key, value.toString())
     }
@@ -76,51 +78,53 @@ export function createApi(baseUrl: URL): Api {
   return { reportPlayedMap, getCurrentMaps, getCurrentServers, authenticate }
 }
 
-export interface ReportPlayedMapBody {
-  server: string
-  map: string
-  mode: string
-  bottom_tier: number
-  top_tier: number
-}
+export type ReportPlayedMapBody = Infer<typeof ReportPlayedMapBody>
+const ReportPlayedMapBody = object({
+  server: string(),
+  map: string(),
+  mode: string(),
+  bottom_tier: number(),
+  top_tier: number(),
+})
 
-export interface GetCurrentMapsQuery {
-  server: string
-  min_tier: number
-  max_tier: number
-}
+export type GetCurrentMapsQuery = Infer<typeof GetCurrentMapsQuery>
+const GetCurrentMapsQuery = object({
+  server: string(),
+  min_tier: number(),
+  max_tier: number(),
+})
 
 export type CurrentMap = Infer<typeof CurrentMap>
-const CurrentMap = type({
+const CurrentMap = object({
   map: string(),
   mode: string(),
   count: number(),
 })
 
 export type CurrentMaps = Infer<typeof CurrentMaps>
-const CurrentMaps = type({
+const CurrentMaps = object({
   modes: record(string(), array(CurrentMap)),
 })
 
 export type CurrentServer = Infer<typeof CurrentServer>
-const CurrentServer = type({
+const CurrentServer = object({
   name: string(),
   region: string(),
   count: number(),
 })
 
 export type CurrentServers = Infer<typeof CurrentServers>
-const CurrentServers = type({
+const CurrentServers = object({
   regions: record(string(), array(CurrentServer)),
 })
 
 export type AuthenticateResponse = Infer<typeof AuthenticateResponse>
-const AuthenticateResponse = type({
+const AuthenticateResponse = object({
   token: string(),
 })
 
 export type ErrorResponse = Infer<typeof ErrorResponse>
-const ErrorResponse = type({
+const ErrorResponse = object({
   error: enums([
     "IncorrectType",
     "Invalid",

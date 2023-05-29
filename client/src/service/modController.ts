@@ -1,6 +1,6 @@
 import { Api } from "./api"
 import { Auth } from "./auth"
-import { Infer, literal, mask, number, string, type, union } from "superstruct"
+import { Infer, literal, mask, number, object, string, union } from "superstruct"
 import { createPageVisible } from "../util/browser"
 import { Accessor, createEffect, createSignal, on, onCleanup } from "solid-js"
 import { customError, wrapperError } from "../util/error"
@@ -95,14 +95,14 @@ const enum MessageType {
 }
 
 type ProtocolVersion = Infer<typeof ProtocolVersion>
-const ProtocolVersion = type({
+const ProtocolVersion = object({
   type: literal(MessageType.ProtocolVersion),
   major: number(),
   minor: number(),
 })
 
 type PlayedMap = Infer<typeof PlayedMap>
-const PlayedMap = type({
+const PlayedMap = object({
   type: literal(MessageType.PlayedMap),
   server: string(),
   map: string(),
