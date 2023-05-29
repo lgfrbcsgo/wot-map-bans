@@ -48,7 +48,8 @@ export function createModController(api: Api, auth: Auth): ModController {
         setConnectionState(ConnectionState.Connected)
       }
       socket.onmessage = e => {
-        const message = ModError.try("Unexpected mod message", () => mask(e.data, ModMessage))
+        const json = ModError.try("Unexpected message type", () => JSON.parse(e.data))
+        const message = ModError.try("Unexpected mod message", () => mask(json, ModMessage))
         void handleMessage(message)
       }
       socket.onclose = e => {
