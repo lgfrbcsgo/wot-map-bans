@@ -10,7 +10,7 @@ use axum::{middleware, Router, Server};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
-use tower_http::cors::{AllowMethods, AllowOrigin, CorsLayer};
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::{DefaultOnFailure, DefaultOnResponse, OnResponse, TraceLayer};
 use tracing::{info, Level, Span};
@@ -100,6 +100,7 @@ async fn init_app_context() -> Result<AppContext> {
 fn configure_app(app_context: AppContext) -> Router {
     let cors_layer = CorsLayer::new()
         .allow_methods(AllowMethods::any())
+        .allow_headers(AllowHeaders::any())
         .allow_origin(AllowOrigin::list([
             HeaderValue::from_str("http://localhost:3000").unwrap(),
             HeaderValue::from_str("https://lgfrbcsgo.github.io").unwrap(),
