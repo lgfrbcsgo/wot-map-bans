@@ -21,11 +21,17 @@ export const enum ConnectionState {
 
 export interface ModController {
   connectionState: Accessor<ConnectionState>
-  connect(): void
 }
 
 export function createModController(api: Api, auth: Auth): ModController {
   const [connectionState, setConnectionState] = createSignal(ConnectionState.Disconnected)
+
+  const pageVisible = createPageVisible()
+  createEffect(
+    on(pageVisible, visible => {
+      if (visible) connect()
+    }),
+  )
 
   let socket: WebSocket | undefined = undefined
   onCleanup(() => socket?.close())
@@ -33,16 +39,8 @@ export function createModController(api: Api, auth: Auth): ModController {
   let reconnectTimeoutHandle: number | undefined = undefined
   onCleanup(() => window.clearTimeout(reconnectTimeoutHandle))
 
-  const pageVisible = createPageVisible()
-
-  createEffect(
-    on(pageVisible, visible => {
-      if (visible) connect()
-    }),
-  )
-
   function connect() {
-    if (pageVisible() && connectionState() === ConnectionState.Disconnected) {
+    if (connectionState() === ConnectionState.Disconnected) {
       setConnectionState(ConnectionState.Connecting)
 
       socket = new WebSocket(MOD_URL)
@@ -56,12 +54,6 @@ export function createModController(api: Api, auth: Auth): ModController {
       socket.onclose = e => {
         setConnectionState(ConnectionState.Disconnected)
         if (e.code !== CloseReason.ConnectionSuperseded) {
-          reconnectTimeoutHandle = window.setTimeout(connect, RECONNECT_INTERVAL)
-        }
-      }
-      socket.onerror = () => {
-        if (connectionState() === ConnectionState.Connecting) {
-          setConnectionState(ConnectionState.Disconnected)
           reconnectTimeoutHandle = window.setTimeout(connect, RECONNECT_INTERVAL)
         }
       }
@@ -93,7 +85,7 @@ export function createModController(api: Api, auth: Auth): ModController {
     }
   }
 
-  return { connectionState, connect }
+  return { connectionState }
 }
 
 const enum MessageType {

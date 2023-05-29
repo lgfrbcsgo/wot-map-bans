@@ -37,12 +37,12 @@ export function createAuth(api: Api): Auth {
 
   if (window.location.search.includes("openid.mode=id_res")) {
     const url = new URL(window.location.href)
-    const params = removeOpenIDParamsFromUrl(url)
+    const params = removeOpenIDParams(url.searchParams)
     window.history.replaceState(null, "", url)
     void verifyIdentity(params)
   }
 
-  async function verifyIdentity(params: FormData) {
+  async function verifyIdentity(params: URLSearchParams) {
     try {
       setVerifying(true)
       const { token } = await api.authenticate(params)
@@ -58,13 +58,13 @@ export function createAuth(api: Api): Auth {
   return { token, verifying, authenticate, invalidateToken }
 }
 
-function removeOpenIDParamsFromUrl(url: URL): FormData {
-  const params = new FormData()
-  for (const [key, value] of url.searchParams) {
+function removeOpenIDParams(searchParams: URLSearchParams): URLSearchParams {
+  const openIDParams = new URLSearchParams()
+  for (const [key, value] of new URLSearchParams(searchParams)) {
     if (key.startsWith("openid.")) {
-      params.set(key, value)
-      url.searchParams.delete(key)
+      openIDParams.set(key, value)
+      searchParams.delete(key)
     }
   }
-  return params
+  return openIDParams
 }

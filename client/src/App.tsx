@@ -2,7 +2,7 @@ import type { Component } from "solid-js"
 import { ServiceProvider } from "./service/context"
 import { createErrorHandler } from "./service/errorHandler"
 import { createApi } from "./service/api"
-import { createAuth } from "./service/auth"
+import { createAuth, OpenIDEndpoint } from "./service/auth"
 import { createModController } from "./service/modController"
 
 const App: Component = () => {
@@ -13,7 +13,7 @@ const App: Component = () => {
 
   return (
     <ServiceProvider services={{ api, auth, errorHandler, modController }}>
-      <h1>Hello, world!</h1>
+      <button onclick={() => auth.authenticate(OpenIDEndpoint.EU)}>Verify account</button>
     </ServiceProvider>
   )
 }

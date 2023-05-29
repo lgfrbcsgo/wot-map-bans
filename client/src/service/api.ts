@@ -46,7 +46,7 @@ export function createApi(baseUrl: URL): Api {
     return expectJsonResponse(res, CurrentServers)
   }
 
-  async function authenticate(params: FormData) {
+  async function authenticate(params: URLSearchParams) {
     const url = new URL("/api/authenticate", baseUrl)
     const res = await fetch(url, {
       method: "POST",
