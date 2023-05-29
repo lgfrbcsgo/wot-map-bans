@@ -25,7 +25,7 @@ export function createApi(baseUrl: URL): Api {
     const url = new URL("/api/played-map", baseUrl)
     const res = await fetch(url, {
       method: "POST",
-      headers: { authorization: `Bearer ${token}` },
+      headers: { "authorization": `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify(body),
     })
     return expectNoResponse(res)
