@@ -1,7 +1,8 @@
 import { Accessor, createMemo, createSignal } from "solid-js"
-import { createEventListener, wrapperError } from "../util"
 import { Auth } from "./auth"
 import { ApiResponseError } from "./api"
+import { wrapperError } from "../util/error"
+import { createWindowListener } from "../util/browser"
 
 export interface ErrorHandler {
   errors: Accessor<Error[]>
@@ -25,8 +26,8 @@ export function createErrorHandler(auth: Auth): ErrorHandler {
     setErrors(prev => [...prev, toError(err)])
   }
 
-  createEventListener("error", e => handleError(e.error))
-  createEventListener("unhandledrejection", e => handleError(e.reason))
+  createWindowListener("error", e => handleError(e.error))
+  createWindowListener("unhandledrejection", e => handleError(e.reason))
 
   return { errors, error, dropError, handleError }
 }

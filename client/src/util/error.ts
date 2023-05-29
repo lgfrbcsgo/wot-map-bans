@@ -1,28 +1,3 @@
-import { createEffect, createSignal, onCleanup, Signal } from "solid-js"
-
-export function createEventListener<K extends keyof WindowEventMap>(
-  type: K,
-  listener: (e: WindowEventMap[K]) => void,
-) {
-  window.addEventListener(type, listener)
-  onCleanup(() => window.removeEventListener(type, listener))
-}
-
-export function createStored(key: string): Signal<string | undefined> {
-  const [value, setValue] = createSignal(localStorage.getItem(key) ?? undefined)
-
-  createEffect(() => {
-    const deref = value()
-    if (deref === undefined) {
-      localStorage.removeItem(key)
-    } else {
-      localStorage.setItem(key, deref)
-    }
-  })
-
-  return [value, setValue]
-}
-
 export interface CustomError<T> extends Error {
   readonly detail: T
 }
@@ -37,6 +12,7 @@ export function customError<T>(
       this.name = name
     }
   }
+
   return CustomError
 }
 
@@ -63,5 +39,6 @@ export function wrapperError(name: string) {
       }
     }
   }
+
   return WrapperError
 }

@@ -1,6 +1,7 @@
 import { Api } from "./api"
 import { Accessor, createSignal } from "solid-js"
-import { createStored } from "../util"
+
+import { createStoredSignal } from "../util/browser"
 
 export const enum OpenIDEndpoint {
   EU = "https://eu.wargaming.net/id/openid/",
@@ -16,7 +17,7 @@ export interface Auth {
 }
 
 export function createAuth(api: Api): Auth {
-  const [token, setToken] = createStored("API_ACCESS_TOKEN")
+  const [token, setToken] = createStoredSignal<string>("API_ACCESS_TOKEN")
   const [verifying, setVerifying] = createSignal(false)
 
   function authenticate(region: OpenIDEndpoint) {

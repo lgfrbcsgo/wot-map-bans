@@ -11,7 +11,7 @@ import {
   type,
   unknown,
 } from "superstruct"
-import { customError, wrapperError } from "../util"
+import { customError, wrapperError } from "../util/error"
 
 export interface Api {
   reportPlayedMap(token: string, body: ReportPlayedMapBody): Promise<void>
