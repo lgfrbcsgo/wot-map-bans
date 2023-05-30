@@ -1,5 +1,5 @@
 import type { Component } from "solid-js"
-import { ServiceProvider } from "./service/context"
+import { ServiceProvider } from "./context"
 import { createErrorHandler } from "./service/errorHandler"
 import { createApi } from "./service/api"
 import { createAuth, OpenIDEndpoint } from "./service/auth"
