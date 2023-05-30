@@ -20,7 +20,7 @@ export function createAuth(api: Api, errorHandler: ErrorHandler): Auth {
   const [token, setToken] = createStoredSignal<string>("API_ACCESS_TOKEN")
   const [verifying, setVerifying] = createSignal(false)
 
-  errorHandler.attachListener(ApiResponseError, err => {
+  errorHandler.createListener(ApiResponseError, err => {
     if (err.detail.error === "InvalidBearerToken") setToken(undefined)
   })
 

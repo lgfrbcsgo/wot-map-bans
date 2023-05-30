@@ -1,7 +1,7 @@
 import { Api } from "./api"
 import { Auth } from "./auth"
 import { Infer, literal, mask, number, object, string, union } from "superstruct"
-import { createPageVisible } from "../util/browser"
+import { createPageVisibilityListener } from "../util/browser"
 import { Accessor, createEffect, createSignal, on, onCleanup } from "solid-js"
 import { wrapperError } from "../util/error"
 
@@ -43,7 +43,7 @@ export function createModController(api: Api, auth: Auth): ModController {
     socketState: SocketState.Disconnected,
   })
 
-  const pageVisible = createPageVisible()
+  const pageVisible = createPageVisibilityListener()
   createEffect(
     on(pageVisible, visible => {
       if (visible) connect()

@@ -4,13 +4,13 @@ import { createWindowListener } from "../util/browser"
 import { Class } from "../util/types"
 
 export interface ErrorHandler {
-  attachListener<E extends Error>(cls: Class<E>, listener: (err: E) => void): void
+  createListener<E extends Error>(cls: Class<E>, listener: (err: E) => void): void
 }
 
 export function createErrorHandler(): ErrorHandler {
   const listeners = new Set<(err: Error) => void>()
 
-  function attachListener<E extends Error>(cls: Class<E>, listener: (err: E) => void) {
+  function createListener<E extends Error>(cls: Class<E>, listener: (err: E) => void) {
     const wrapper = (err: Error) => {
       if (err instanceof cls) listener(err)
     }
@@ -28,7 +28,7 @@ export function createErrorHandler(): ErrorHandler {
   createWindowListener("error", e => handleError(e.error))
   createWindowListener("unhandledrejection", e => handleError(e.reason))
 
-  return { attachListener }
+  return { createListener }
 }
 
 export const ThrownValue = wrapperError("ThrownValue")

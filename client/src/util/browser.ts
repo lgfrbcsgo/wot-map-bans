@@ -16,7 +16,7 @@ export function createDocumentListener<K extends keyof DocumentEventMap>(
   onCleanup(() => document.removeEventListener(type, listener))
 }
 
-export function createPageVisible(): Accessor<boolean> {
+export function createPageVisibilityListener(): Accessor<boolean> {
   const [visibilityState, setVisibilityState] = createSignal(document.visibilityState)
 
   createDocumentListener("visibilitychange", () => setVisibilityState(document.visibilityState))
