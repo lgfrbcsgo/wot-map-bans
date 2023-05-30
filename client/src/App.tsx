@@ -6,9 +6,9 @@ import { createAuth, OpenIDEndpoint } from "./service/auth"
 import { createModController } from "./service/modController"
 
 const App: Component = () => {
+  const errorHandler = createErrorHandler()
   const api = createApi(new URL(import.meta.env.VITE_API_URL))
-  const auth = createAuth(api)
-  const errorHandler = createErrorHandler(auth)
+  const auth = createAuth(api, errorHandler)
   const modController = createModController(api, auth)
 
   return (

@@ -1,40 +1,47 @@
-import { Accessor, createMemo, createSignal } from "solid-js"
-import { Auth } from "./auth"
-import { ApiResponseError } from "./api"
+import { Accessor, createSignal, onCleanup } from "solid-js"
 import { wrapperError } from "../util/error"
 import { createWindowListener } from "../util/browser"
+import { Class } from "../util/types"
 
 export interface ErrorHandler {
-  errors: Accessor<Error[]>
   error: Accessor<Error | undefined>
+  attachListener<E extends Error>(cls: Class<E>, listener: (err: E) => void): void
   dropError(): void
-  handleError(err: unknown): void
 }
 
-export function createErrorHandler(auth: Auth): ErrorHandler {
-  const [errors, setErrors] = createSignal<Error[]>([])
-  const error = createMemo(() => errors().at(0))
+export function createErrorHandler(): ErrorHandler {
+  const [error, setError] = createSignal<Error>()
+  const listeners = new Set<(err: Error) => void>()
+
+  function attachListener<E extends Error>(cls: Class<E>, listener: (err: E) => void) {
+    const wrapper = (err: Error) => {
+      if (err instanceof cls) listener(err)
+    }
+    listeners.add(wrapper)
+    onCleanup(() => listeners.delete(wrapper))
+  }
 
   function dropError() {
-    setErrors(prev => prev.slice(1))
+    setError(undefined)
   }
 
   function handleError(err: unknown) {
-    if (err instanceof ApiResponseError && err.detail.error === "InvalidBearerToken") {
-      auth.invalidateToken()
+    const errorInstance = toErrorInstance(err)
+    setError(errorInstance)
+    for (const listener of listeners) {
+      listener(errorInstance)
     }
-    setErrors(prev => [...prev, toError(err)])
   }
 
   createWindowListener("error", e => handleError(e.error))
   createWindowListener("unhandledrejection", e => handleError(e.reason))
 
-  return { errors, error, dropError, handleError }
+  return { error, attachListener, dropError }
 }
 
 export const ThrownValue = wrapperError("ThrownValue")
 
-function toError(err: unknown): Error {
+function toErrorInstance(err: unknown): Error {
   if (err instanceof Error) {
     return err
   } else {

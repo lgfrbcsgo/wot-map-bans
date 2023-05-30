@@ -1,7 +1,8 @@
-import { Api } from "./api"
+import { Api, ApiResponseError } from "./api"
 import { Accessor, createSignal } from "solid-js"
 
 import { createStoredSignal } from "../util/browser"
+import { ErrorHandler } from "./errorHandler"
 
 export const enum OpenIDEndpoint {
   EU = "https://eu.wargaming.net/id/openid/",
@@ -13,12 +14,15 @@ export interface Auth {
   token: Accessor<string | undefined>
   verifying: Accessor<boolean>
   authenticate(region: OpenIDEndpoint): void
-  invalidateToken(): void
 }
 
-export function createAuth(api: Api): Auth {
+export function createAuth(api: Api, errorHandler: ErrorHandler): Auth {
   const [token, setToken] = createStoredSignal<string>("API_ACCESS_TOKEN")
   const [verifying, setVerifying] = createSignal(false)
+
+  errorHandler.attachListener(ApiResponseError, err => {
+    if (err.detail.error === "InvalidBearerToken") setToken(undefined)
+  })
 
   function authenticate(region: OpenIDEndpoint) {
     const url = new URL(region)
@@ -29,10 +33,6 @@ export function createAuth(api: Api): Auth {
     url.searchParams.set("openid.claimed_id", "http://specs.openid.net/auth/2.0/identifier_select")
     url.searchParams.set("openid.identity", "http://specs.openid.net/auth/2.0/identifier_select")
     window.location.assign(url)
-  }
-
-  function invalidateToken() {
-    setToken(undefined)
   }
 
   if (window.location.search.includes("openid.mode=id_res")) {
@@ -55,7 +55,7 @@ export function createAuth(api: Api): Auth {
     }
   }
 
-  return { token, verifying, authenticate, invalidateToken }
+  return { token, verifying, authenticate }
 }
 
 function removeOpenIDParams(searchParams: URLSearchParams): URLSearchParams {
