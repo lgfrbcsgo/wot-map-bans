@@ -13,35 +13,19 @@ const enum CloseReason {
   ConnectionSuperseded = 4000,
 }
 
-export const enum SocketState {
+export const enum ConnectionState {
   Disconnected,
   Connecting,
   Connected,
+  IncompatibleVersion,
 }
-
-interface DisconnectedState {
-  socketState: SocketState.Disconnected
-}
-
-interface ConnectingState {
-  socketState: SocketState.Connecting
-}
-
-interface ConnectedState {
-  socketState: SocketState.Connected
-  protocolVersionSupported: boolean
-}
-
-export type ConnectionState = DisconnectedState | ConnectingState | ConnectedState
 
 export interface Mod {
   connectionState: Accessor<ConnectionState>
 }
 
 export function createMod(api: Api, auth: Auth): Mod {
-  const [connectionState, setConnectionState] = createSignal<ConnectionState>({
-    socketState: SocketState.Disconnected,
-  })
+  const [connectionState, setConnectionState] = createSignal(ConnectionState.Disconnected)
 
   const pageVisible = createPageVisibilityListener()
   createEffect(
@@ -58,15 +42,12 @@ export function createMod(api: Api, auth: Auth): Mod {
 
   function connect() {
     if (socket === undefined) {
-      setConnectionState({ socketState: SocketState.Connecting })
+      setConnectionState(ConnectionState.Connecting)
 
       socket = new WebSocket(MOD_URL)
 
       socket.onopen = () => {
-        setConnectionState({
-          socketState: SocketState.Connected,
-          protocolVersionSupported: true,
-        })
+        setConnectionState(ConnectionState.Connected)
       }
 
       socket.onmessage = e => {
@@ -77,7 +58,7 @@ export function createMod(api: Api, auth: Auth): Mod {
 
       socket.onclose = e => {
         socket = undefined
-        setConnectionState({ socketState: SocketState.Disconnected })
+        setConnectionState(ConnectionState.Disconnected)
         if (e.code !== CloseReason.ConnectionSuperseded) {
           reconnectTimeoutHandle = window.setTimeout(connect, RECONNECT_INTERVAL)
         }
@@ -99,10 +80,7 @@ export function createMod(api: Api, auth: Auth): Mod {
       message.major !== SUPPORTED_PROTOCOL_VERSION.major ||
       message.minor < SUPPORTED_PROTOCOL_VERSION.minor
     ) {
-      setConnectionState({
-        socketState: SocketState.Connected,
-        protocolVersionSupported: false,
-      })
+      setConnectionState(ConnectionState.IncompatibleVersion)
     }
   }
 
