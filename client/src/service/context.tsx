@@ -2,13 +2,13 @@ import { children as useChildren, Component, createContext, JSX, useContext } fr
 import { Api } from "./api"
 import { ErrorHandler } from "./errorHandler"
 import { Auth } from "./auth"
-import { ModController } from "./modController"
+import { Mod } from "./mod"
 
 export interface Services {
+  errorHandler: ErrorHandler
   api: Api
   auth: Auth
-  errorHandler: ErrorHandler
-  modController: ModController
+  mod: Mod
 }
 
 const Context = createContext<Partial<Services>>({})

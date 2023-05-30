@@ -34,11 +34,11 @@ interface ConnectedState {
 
 export type ConnectionState = DisconnectedState | ConnectingState | ConnectedState
 
-export interface ModController {
+export interface Mod {
   connectionState: Accessor<ConnectionState>
 }
 
-export function createModController(api: Api, auth: Auth): ModController {
+export function createMod(api: Api, auth: Auth): Mod {
   const [connectionState, setConnectionState] = createSignal<ConnectionState>({
     socketState: SocketState.Disconnected,
   })
