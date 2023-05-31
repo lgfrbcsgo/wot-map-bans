@@ -1,6 +1,5 @@
 import {
   array,
-  enums,
   Infer,
   mask,
   number,
@@ -11,7 +10,7 @@ import {
   Struct,
   unknown,
 } from "superstruct"
-import { customError, wrapperError } from "../util/error"
+import { customError, contextualizedError } from "../util/error"
 
 export interface Api {
   reportPlayedMap(token: string, body: ReportPlayedMapBody): Promise<void>
@@ -125,15 +124,7 @@ const AuthenticateResponse = object({
 
 export type ErrorResponse = Infer<typeof ErrorResponse>
 const ErrorResponse = object({
-  error: enums([
-    "IncorrectType",
-    "Invalid",
-    "ExpectedBearerToken",
-    "InvalidBearerToken",
-    "AuthRequired",
-    "OpenIDRejected",
-    "NotEnoughBattles",
-  ]),
+  error: string(),
   detail: optional(unknown()),
 })
 
@@ -142,4 +133,4 @@ export const ApiResponseError = customError(
   (detail: ErrorResponse) => `API returned error ${detail.error}`,
 )
 
-export const ApiError = wrapperError("ApiError")
+export const ApiError = contextualizedError("ApiError")

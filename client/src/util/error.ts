@@ -16,8 +16,8 @@ export function customError<T>(
   return CustomError
 }
 
-export function wrapperError(name: string) {
-  class WrapperError extends Error {
+export function contextualizedError(name: string) {
+  class ContextualizedError extends Error {
     constructor(message: string, readonly cause: unknown) {
       super(message)
       this.name = name
@@ -30,15 +30,15 @@ export function wrapperError(name: string) {
         const ret = fn()
         if (ret instanceof Promise) {
           return ret.catch(cause => {
-            throw new WrapperError(message, cause)
+            throw new ContextualizedError(message, cause)
           })
         }
         return ret
       } catch (cause) {
-        throw new WrapperError(message, cause)
+        throw new ContextualizedError(message, cause)
       }
     }
   }
 
-  return WrapperError
+  return ContextualizedError
 }

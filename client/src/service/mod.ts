@@ -1,17 +1,15 @@
 import { Api } from "./api"
-import { Auth } from "./auth"
+import { Auth, AuthStateEnum } from "./auth"
 import { Infer, literal, mask, number, object, string, union } from "superstruct"
 import { createPageVisibilityListener } from "../util/browser"
 import { Accessor, createEffect, createSignal, on, onCleanup } from "solid-js"
-import { wrapperError } from "../util/error"
+import { contextualizedError } from "../util/error"
+import { hasType } from "../util/types"
 
 const MOD_URL = new URL("ws://localhost:15457")
 const SUPPORTED_PROTOCOL_VERSION = { major: 1, minor: 0 }
+const CONNECTION_SUPERSEDED_CODE = 4000
 const RECONNECT_INTERVAL = 10_000
-
-const enum CloseReason {
-  ConnectionSuperseded = 4000,
-}
 
 export const enum ConnectionState {
   Disconnected,
@@ -59,7 +57,7 @@ export function createMod(api: Api, auth: Auth): Mod {
       socket.onclose = e => {
         socket = undefined
         setConnectionState(ConnectionState.Disconnected)
-        if (e.code !== CloseReason.ConnectionSuperseded) {
+        if (e.code !== CONNECTION_SUPERSEDED_CODE) {
           reconnectTimeoutHandle = window.setTimeout(connect, RECONNECT_INTERVAL)
         }
       }
@@ -85,9 +83,9 @@ export function createMod(api: Api, auth: Auth): Mod {
   }
 
   async function handlePlayedMap(message: PlayedMap) {
-    const token = auth.token()
-    if (token) {
-      await api.reportPlayedMap(token, message)
+    const currentAuthState = auth.state()
+    if (hasType(currentAuthState, AuthStateEnum.Authenticated)) {
+      await api.reportPlayedMap(currentAuthState.token, message)
     }
   }
 
@@ -119,4 +117,4 @@ const PlayedMap = object({
 type ModMessage = Infer<typeof ModMessage>
 const ModMessage = union([ProtocolVersion, PlayedMap])
 
-export const ModError = wrapperError("ModError")
+export const ModError = contextualizedError("ModError")

@@ -1,8 +1,9 @@
 import { Api, ApiResponseError } from "./api"
-import { Accessor, createSignal } from "solid-js"
+import { Accessor, createEffect, createSignal, Signal } from "solid-js"
+import { hasType } from "../util/types"
+import { createErrorHandler } from "../util/browser"
 
-import { createStoredSignal } from "../util/browser"
-import { ErrorHandler } from "./errorHandler"
+const TOKEN_STORAGE_KEY = "API_ACCESS_TOKEN"
 
 export const enum OpenIDEndpoint {
   EU = "https://eu.wargaming.net/id/openid/",
@@ -10,18 +11,31 @@ export const enum OpenIDEndpoint {
   Asia = "https://asia.wargaming.net/id/openid/",
 }
 
+export const enum AuthStateEnum {
+  Unauthenticated = 1,
+  Verifying = 2,
+  NotEnoughBattles = 3,
+  Authenticated = 4,
+}
+
+export type AuthState =
+  | AuthStateEnum.Unauthenticated
+  | AuthStateEnum.Verifying
+  | AuthStateEnum.NotEnoughBattles
+  | { type: AuthStateEnum.Authenticated; token: string }
+
 export interface Auth {
-  token: Accessor<string | undefined>
-  verifying: Accessor<boolean>
+  state: Accessor<AuthState>
   authenticate(region: OpenIDEndpoint): void
 }
 
-export function createAuth(api: Api, errorHandler: ErrorHandler): Auth {
-  const [token, setToken] = createStoredSignal<string>("API_ACCESS_TOKEN")
-  const [verifying, setVerifying] = createSignal(false)
+export function createAuth(api: Api): Auth {
+  const [state, setState] = createAuthState()
 
-  errorHandler.createListener(ApiResponseError, err => {
-    if (err.detail.error === "InvalidBearerToken") setToken(undefined)
+  createErrorHandler(err => {
+    if (err instanceof ApiResponseError && err.detail.error === "InvalidBearerToken") {
+      setState(AuthStateEnum.Unauthenticated)
+    }
   })
 
   function authenticate(region: OpenIDEndpoint) {
@@ -44,18 +58,41 @@ export function createAuth(api: Api, errorHandler: ErrorHandler): Auth {
 
   async function verifyIdentity(params: URLSearchParams) {
     try {
-      setVerifying(true)
+      setState(AuthStateEnum.Verifying)
       const { token } = await api.authenticate(params)
-      setToken(token)
+      setState({ type: AuthStateEnum.Authenticated, token })
     } catch (err) {
-      setToken(undefined)
-      throw err
-    } finally {
-      setVerifying(false)
+      if (err instanceof ApiResponseError && err.detail.error === "NotEnoughBattles") {
+        setState(AuthStateEnum.NotEnoughBattles)
+      } else {
+        setState(AuthStateEnum.Unauthenticated)
+        throw err
+      }
     }
   }
 
-  return { token, verifying, authenticate }
+  return { state, authenticate }
+}
+
+function createAuthState(): Signal<AuthState> {
+  const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+
+  const [state, setState] = createSignal<AuthState>(
+    storedToken !== null
+      ? { type: AuthStateEnum.Authenticated, token: storedToken }
+      : AuthStateEnum.Unauthenticated,
+  )
+
+  createEffect(() => {
+    const currentState = state()
+    if (hasType(currentState, AuthStateEnum.Authenticated)) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, currentState.token)
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    }
+  })
+
+  return [state, setState]
 }
 
 function removeOpenIDParams(searchParams: URLSearchParams): URLSearchParams {
