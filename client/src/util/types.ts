@@ -1,10 +1,25 @@
 type Literal = string | number | boolean
 
-type Tagged<T extends Literal> = T | { type: T }
+type Tagged<L extends Literal> = L | { type: L }
 
-export function hasType<T extends Literal, U extends T>(
-  tagged: Tagged<T>,
-  type: U,
-): tagged is Tagged<U> {
-  return typeof tagged === "object" ? tagged.type === type : tagged === type
+type Tags<T extends Tagged<Literal>> = T extends Tagged<infer L> ? L : never
+
+export function getType<L extends Literal>(tagged: Tagged<L>): L {
+  return typeof tagged === "object" ? tagged.type : tagged
+}
+
+export function hasType<T extends Tagged<Literal>, L extends Tags<T>>(
+  tagged: T,
+  type: L,
+): tagged is Extract<T, Tagged<L>> {
+  return getType(tagged) === type
+}
+
+export function unwrapType<T extends Tagged<Literal>, L extends Tags<T>>(
+  tagged: T,
+  type: L,
+): Extract<T, Tagged<L>> | undefined {
+  if (hasType(tagged, type)) {
+    return tagged
+  }
 }

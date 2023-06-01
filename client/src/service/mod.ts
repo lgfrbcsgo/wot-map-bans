@@ -1,67 +1,85 @@
 import { Api } from "./api"
-import { Auth, AuthStateEnum } from "./auth"
+import { Auth } from "./auth"
 import { Infer, literal, mask, number, object, string, union } from "superstruct"
-import { createPageVisibilityListener } from "../util/browser"
-import { Accessor, createEffect, createSignal, on, onCleanup } from "solid-js"
+import { onVisibilityChange } from "../util/browser"
+import { Accessor, createSignal, onCleanup } from "solid-js"
 import { contextualizedError } from "../util/error"
-import { hasType } from "../util/types"
+import { getType, hasType, unwrapType } from "../util/types"
 
 const MOD_URL = new URL("ws://localhost:15457")
 const SUPPORTED_PROTOCOL_VERSION = { major: 1, minor: 0 }
 const CONNECTION_SUPERSEDED_CODE = 4000
 const RECONNECT_INTERVAL = 10_000
 
-export const enum ConnectionState {
+export const enum ModState {
   Disconnected,
   Connecting,
   Connected,
-  IncompatibleVersion,
 }
 
 export interface Mod {
-  connectionState: Accessor<ConnectionState>
+  state: Accessor<ModState>
+  connection: Accessor<ModConnection | undefined>
 }
 
+type InternalModState =
+  | ModState.Disconnected
+  | { type: ModState.Connecting; socket: WebSocket }
+  | { type: ModState.Connected; socket: WebSocket; connection: ModConnection }
+
 export function createMod(api: Api, auth: Auth): Mod {
-  const [connectionState, setConnectionState] = createSignal(ConnectionState.Disconnected)
+  const [internalState, setInternalState] = createSignal<InternalModState>(ModState.Disconnected)
+  const state = () => getType(internalState())
+  const connection = () => unwrapType(internalState(), ModState.Connected)?.connection
 
-  const pageVisible = createPageVisibilityListener()
-  createEffect(
-    on(pageVisible, visible => {
-      if (visible) connect()
-    }),
-  )
+  onCleanup(() => {
+    const currentState = internalState()
+    if (!hasType(currentState, ModState.Disconnected)) {
+      currentState.socket.close()
+    }
+  })
 
-  let socket: WebSocket | undefined = undefined
-  onCleanup(() => socket?.close())
+  onVisibilityChange(visible => {
+    if (visible) connect()
+  })
 
-  let reconnectTimeoutHandle: number | undefined = undefined
+  let reconnectTimeoutHandle: number | undefined
   onCleanup(() => window.clearTimeout(reconnectTimeoutHandle))
 
   function connect() {
-    if (socket === undefined) {
-      setConnectionState(ConnectionState.Connecting)
+    if (!hasType(internalState(), ModState.Disconnected)) return
 
-      socket = new WebSocket(MOD_URL)
+    const socket = new WebSocket(MOD_URL)
 
-      socket.onopen = () => {
-        setConnectionState(ConnectionState.Connected)
-      }
+    setInternalState({ type: ModState.Connecting, socket })
 
-      socket.onmessage = e => {
-        const json = ModError.try("Unexpected message type", () => JSON.parse(e.data))
-        const message = ModError.try("Unexpected mod message", () => mask(json, ModMessage))
-        void handleMessage(message)
-      }
+    socket.onopen = () => {
+      const connection = createModConnection(socket, api, auth)
+      setInternalState({ type: ModState.Connected, socket, connection })
+    }
 
-      socket.onclose = e => {
-        socket = undefined
-        setConnectionState(ConnectionState.Disconnected)
-        if (e.code !== CONNECTION_SUPERSEDED_CODE) {
-          reconnectTimeoutHandle = window.setTimeout(connect, RECONNECT_INTERVAL)
-        }
+    socket.onclose = e => {
+      setInternalState(ModState.Disconnected)
+      if (e.code !== CONNECTION_SUPERSEDED_CODE) {
+        reconnectTimeoutHandle = window.setTimeout(connect, RECONNECT_INTERVAL)
       }
     }
+  }
+
+  return { state, connection }
+}
+
+export interface ModConnection {
+  modCompatible: Accessor<boolean>
+}
+
+function createModConnection(socket: WebSocket, api: Api, auth: Auth): ModConnection {
+  const [modCompatible, setModCompatible] = createSignal(true)
+
+  socket.onmessage = e => {
+    const json = ModError.try("Unexpected message type", () => JSON.parse(e.data))
+    const message = ModError.try("Unexpected mod message", () => mask(json, ModMessage))
+    void handleMessage(message)
   }
 
   async function handleMessage(message: ModMessage) {
@@ -74,22 +92,20 @@ export function createMod(api: Api, auth: Auth): Mod {
   }
 
   async function handleProtocolVersion(message: ProtocolVersion) {
-    if (
-      message.major !== SUPPORTED_PROTOCOL_VERSION.major ||
-      message.minor < SUPPORTED_PROTOCOL_VERSION.minor
-    ) {
-      setConnectionState(ConnectionState.IncompatibleVersion)
+    const { major, minor } = SUPPORTED_PROTOCOL_VERSION
+    if (message.major !== major || message.minor < minor) {
+      setModCompatible(false)
     }
   }
 
   async function handlePlayedMap(message: PlayedMap) {
-    const currentAuthState = auth.state()
-    if (hasType(currentAuthState, AuthStateEnum.Authenticated)) {
-      await api.reportPlayedMap(currentAuthState.token, message)
+    const currentToken = auth.token()
+    if (currentToken) {
+      await api.reportPlayedMap(currentToken, message)
     }
   }
 
-  return { connectionState }
+  return { modCompatible }
 }
 
 const enum MessageType {
