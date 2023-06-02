@@ -1,10 +1,11 @@
 import { Api } from "./api"
 import { Auth } from "./auth"
 import { Infer, literal, mask, number, object, string, union } from "superstruct"
-import { onVisibilityChange } from "../util/browser"
-import { Accessor, createSignal, onCleanup } from "solid-js"
+import { createPageVisibility } from "../util/browser"
+import { Accessor, createSignal, on, onCleanup } from "solid-js"
 import { contextualizedError } from "../util/error"
 import { getType, hasType, unwrapType } from "../util/types"
+import { effect } from "solid-js/web"
 
 const MOD_URL = new URL("ws://localhost:15457")
 const SUPPORTED_PROTOCOL_VERSION = { major: 1, minor: 0 }
@@ -39,9 +40,12 @@ export function createMod(api: Api, auth: Auth): Mod {
     }
   })
 
-  onVisibilityChange(visible => {
-    if (visible) connect()
-  })
+  const pageVisible = createPageVisibility()
+  effect(
+    on(pageVisible, visible => {
+      if (visible) connect()
+    }),
+  )
 
   let reconnectTimeoutHandle: number | undefined
   onCleanup(() => window.clearTimeout(reconnectTimeoutHandle))
