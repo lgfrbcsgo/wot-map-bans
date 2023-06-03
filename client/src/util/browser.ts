@@ -1,4 +1,4 @@
-import { Accessor, createSignal, onCleanup } from "solid-js"
+import { onCleanup } from "solid-js"
 
 export function onWindowEvent<K extends keyof WindowEventMap>(
   type: K,
@@ -13,12 +13,15 @@ export function onUnhandledError(listener: (err: unknown) => void) {
   onWindowEvent("unhandledrejection", e => listener(e.reason))
 }
 
-export function createPageVisibility(): Accessor<boolean> {
-  const [visibility, setVisibility] = createSignal(document.visibilityState)
+export function onPageVisible(listener: () => void) {
+  function onVisibilityChange() {
+    if (document.visibilityState === "visible") {
+      listener()
+    }
+  }
 
-  const onVisibilityChange = () => setVisibility(document.visibilityState)
   document.addEventListener("visibilitychange", onVisibilityChange)
   onCleanup(() => document.removeEventListener("visibilitychange", onVisibilityChange))
 
-  return () => visibility() === "visible"
+  onVisibilityChange()
 }

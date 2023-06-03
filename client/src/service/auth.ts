@@ -1,6 +1,5 @@
 import { Api, ApiResponseError } from "./api"
 import { Accessor, createEffect, createSignal, Signal } from "solid-js"
-import { getType, hasType, unwrapType } from "../util/types"
 import { onUnhandledError } from "../util/browser"
 
 const TOKEN_STORAGE_KEY = "API_ACCESS_TOKEN"
@@ -18,26 +17,41 @@ export const enum AuthState {
   Authenticated = 4,
 }
 
+interface UnauthenticatedState {
+  type: AuthState.Unauthenticated
+}
+
+interface VerifyingState {
+  type: AuthState.Verifying
+}
+
+interface NotEnoughBattlesState {
+  type: AuthState.NotEnoughBattles
+}
+
+interface AuthenticatedState {
+  type: AuthState.Authenticated
+  token: string
+}
+
+type InternalState =
+  | UnauthenticatedState
+  | VerifyingState
+  | NotEnoughBattlesState
+  | AuthenticatedState
+
 export interface Auth {
   state: Accessor<AuthState>
   token: Accessor<string | undefined>
   authenticate(region: OpenIDEndpoint): void
 }
 
-type InternalAuthState =
-  | AuthState.Unauthenticated
-  | AuthState.Verifying
-  | AuthState.NotEnoughBattles
-  | { type: AuthState.Authenticated; token: string }
-
 export function createAuth(api: Api): Auth {
-  const [internalState, setInternalState] = createAuthState()
-  const state = () => getType(internalState())
-  const token = () => unwrapType(internalState(), AuthState.Authenticated)?.token
+  const [internalState, setInternalState] = createInternalState()
 
   onUnhandledError(err => {
     if (err instanceof ApiResponseError && err.detail.error === "InvalidBearerToken") {
-      setInternalState(AuthState.Unauthenticated)
+      setInternalState({ type: AuthState.Unauthenticated })
     }
   })
 
@@ -61,41 +75,50 @@ export function createAuth(api: Api): Auth {
 
   async function verifyIdentity(params: URLSearchParams) {
     try {
-      setInternalState(AuthState.Verifying)
+      setInternalState({ type: AuthState.Verifying })
       const { token } = await api.authenticate(params)
       setInternalState({ type: AuthState.Authenticated, token })
     } catch (err) {
       if (err instanceof ApiResponseError && err.detail.error === "NotEnoughBattles") {
-        setInternalState(AuthState.NotEnoughBattles)
+        setInternalState({ type: AuthState.NotEnoughBattles })
       } else {
-        setInternalState(AuthState.Unauthenticated)
+        setInternalState({ type: AuthState.Unauthenticated })
         throw err
       }
     }
   }
 
-  return { state, token, authenticate }
+  return {
+    state: () => internalState().type,
+    token: () => {
+      const currentState = internalState()
+      if (currentState.type === AuthState.Authenticated) {
+        return currentState.token
+      }
+    },
+    authenticate,
+  }
 }
 
-function createAuthState(): Signal<InternalAuthState> {
+function createInternalState(): Signal<InternalState> {
   const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
 
-  const [state, setState] = createSignal<InternalAuthState>(
+  const [internalState, setInternalState] = createSignal<InternalState>(
     storedToken !== null
       ? { type: AuthState.Authenticated, token: storedToken }
-      : AuthState.Unauthenticated,
+      : { type: AuthState.Unauthenticated },
   )
 
   createEffect(() => {
-    const currentState = state()
-    if (hasType(currentState, AuthState.Authenticated)) {
+    const currentState = internalState()
+    if (currentState.type === AuthState.Authenticated) {
       localStorage.setItem(TOKEN_STORAGE_KEY, currentState.token)
     } else {
       localStorage.removeItem(TOKEN_STORAGE_KEY)
     }
   })
 
-  return [state, setState]
+  return [internalState, setInternalState]
 }
 
 function removeOpenIDParams(searchParams: URLSearchParams): URLSearchParams {
