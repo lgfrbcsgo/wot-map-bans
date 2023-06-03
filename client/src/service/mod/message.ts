@@ -1,19 +1,12 @@
-import { Infer, literal, number, object, string, union } from "superstruct"
+import { array, Infer, literal, number, object, string, union } from "superstruct"
 
 export const enum MessageType {
-  ProtocolVersion = "ProtocolVersion",
   PlayedMap = "PlayedMap",
+  BlockedMaps = "BlockedMaps",
 }
 
-export type ProtocolVersion = Infer<typeof ProtocolVersion>
-export const ProtocolVersion = object({
-  type: literal(MessageType.ProtocolVersion),
-  major: number(),
-  minor: number(),
-})
-
 export type PlayedMap = Infer<typeof PlayedMap>
-export const PlayedMap = object({
+const PlayedMap = object({
   type: literal(MessageType.PlayedMap),
   server: string(),
   map: string(),
@@ -22,5 +15,17 @@ export const PlayedMap = object({
   top_tier: number(),
 })
 
+export type BlockedMap = Infer<typeof BlockedMap>
+const BlockedMap = object({
+  map: string(),
+  blocked_until: number(),
+})
+
+export type BlockedMaps = Infer<typeof BlockedMaps>
+const BlockedMaps = object({
+  type: literal(MessageType.BlockedMaps),
+  maps: array(BlockedMap),
+})
+
 export type ModMessage = Infer<typeof ModMessage>
-export const ModMessage = union([ProtocolVersion, PlayedMap])
+export const ModMessage = union([PlayedMap, BlockedMaps])
