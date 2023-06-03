@@ -8,9 +8,11 @@
   },
   "dependencies": {
     "solid-js": "^1.6.10",
-    "superstruct": "^1.0.3"
+    "superstruct": "^1.0.3",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/uuid": "^9.0.1",
     "prettier": "^2.8.8",
     "typescript": "^5.0.4",
     "vite": "^4.3.9",
