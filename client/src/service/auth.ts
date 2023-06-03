@@ -1,6 +1,6 @@
 import { Api, ApiResponseError } from "./api"
 import { Accessor, createEffect, createSignal, Signal } from "solid-js"
-import { onUnhandledError } from "../util/browser"
+import { onUnhandledError, onWindowEvent } from "../util/browser"
 
 const TOKEN_STORAGE_KEY = "API_ACCESS_TOKEN"
 
@@ -101,13 +101,20 @@ export function createAuth(api: Api): Auth {
 }
 
 function createInternalState(): Signal<InternalState> {
-  const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
-
   const [internalState, setInternalState] = createSignal<InternalState>(
-    storedToken !== null
-      ? { type: AuthState.Authenticated, token: storedToken }
-      : { type: AuthState.Unauthenticated },
+    newStateFromToken(localStorage.getItem(TOKEN_STORAGE_KEY)),
   )
+
+  onWindowEvent("storage", e => {
+    if (e.key !== TOKEN_STORAGE_KEY) return
+    setInternalState(newStateFromToken(e.newValue))
+  })
+
+  function newStateFromToken(token: string | null): InternalState {
+    return token !== null
+      ? { type: AuthState.Authenticated, token }
+      : { type: AuthState.Unauthenticated }
+  }
 
   createEffect(() => {
     const currentState = internalState()
