@@ -7,11 +7,13 @@ import { createModConnection, ModConnection } from "./connection"
 export type { ModConnection } from "./connection"
 
 const MOD_URL = new URL("ws://localhost:15457")
+const MOD_HEALTH_URL = new URL("http://localhost:15457/health")
 const CONNECTION_SUPERSEDED_CODE = 4000
 const RECONNECT_INTERVAL = 10_000
 
 export const enum ModState {
   Disconnected,
+  CheckingHealth,
   Connecting,
   Connected,
 }
@@ -19,6 +21,10 @@ export const enum ModState {
 interface DisconnectedState {
   type: ModState.Disconnected
   reconnectTimeout?: number
+}
+
+interface CheckingHealthState {
+  type: ModState.CheckingHealth
 }
 
 interface ConnectingState {
@@ -32,7 +38,7 @@ interface ConnectedState {
   connection: ModConnection
 }
 
-type InternalState = DisconnectedState | ConnectingState | ConnectedState
+type InternalState = DisconnectedState | CheckingHealthState | ConnectingState | ConnectedState
 
 export interface Mod {
   state: Accessor<ModState>
@@ -53,10 +59,29 @@ export function createMod(api: Api, auth: Auth): Mod {
 
       window.clearTimeout(state.reconnectTimeout)
 
+      fetch(MOD_HEALTH_URL).then(healthy).catch(unhealthy)
+
+      return { type: ModState.CheckingHealth }
+    })
+  }
+
+  function healthy() {
+    setInternalState(state => {
+      if (state.type !== ModState.CheckingHealth) return state
+
       const socket = new WebSocket(MOD_URL)
       socket.addEventListener("open", connected)
       socket.addEventListener("close", e => disconnected(e.code))
       return { type: ModState.Connecting, socket }
+    })
+  }
+
+  function unhealthy() {
+    setInternalState(state => {
+      if (state.type !== ModState.CheckingHealth) return state
+
+      const reconnectTimeout = window.setTimeout(connect, RECONNECT_INTERVAL)
+      return { type: ModState.Disconnected, reconnectTimeout }
     })
   }
 
@@ -77,7 +102,11 @@ export function createMod(api: Api, auth: Auth): Mod {
 
   function disconnected(code: number) {
     setInternalState(state => {
-      if (state.type === ModState.Disconnected || state.socket.readyState !== WebSocket.CLOSED)
+      if (
+        state.type === ModState.Disconnected ||
+        state.type === ModState.CheckingHealth ||
+        state.socket.readyState !== WebSocket.CLOSED
+      )
         return state
 
       if (code === CONNECTION_SUPERSEDED_CODE) {
@@ -94,6 +123,8 @@ export function createMod(api: Api, auth: Auth): Mod {
       switch (state.type) {
         case ModState.Disconnected:
           window.clearTimeout(state.reconnectTimeout)
+          return { type: ModState.Disconnected }
+        case ModState.CheckingHealth:
           return { type: ModState.Disconnected }
         case ModState.Connecting:
         case ModState.Connected:
