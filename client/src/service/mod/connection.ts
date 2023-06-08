@@ -1,7 +1,7 @@
 import { Api } from "../api"
 import { Auth } from "../auth"
 import { mask } from "superstruct"
-import { BlockedMap, BlockedMaps, MessageType, ModMessage, PlayedMap } from "./message"
+import { ActiveModes, BlockedMap, BlockedMaps, MessageType, ModMessage, PlayedMap } from "./message"
 import { contextualizedError } from "../../util/error"
 import { Accessor, createSignal } from "solid-js"
 
@@ -9,10 +9,12 @@ export const ModConnectionError = contextualizedError("ModError")
 
 export interface ModConnection {
   blockedMaps: Accessor<BlockedMap[]>
+  activeModes: Accessor<string[]>
 }
 
 export function createModConnection(socket: WebSocket, api: Api, auth: Auth): ModConnection {
   const [blockedMaps, setBlockedMaps] = createSignal<BlockedMap[]>([])
+  const [activeModes, setActiveModes] = createSignal<string[]>([])
 
   socket.addEventListener("message", e => {
     const json = ModConnectionError.try("Unexpected message type", () => JSON.parse(e.data))
@@ -26,6 +28,8 @@ export function createModConnection(socket: WebSocket, api: Api, auth: Auth): Mo
         return handlePlayedMap(message)
       case MessageType.BlockedMaps:
         return handleBlockedMaps(message)
+      case MessageType.ActiveModes:
+        return handleActiveModes(message)
     }
   }
 
@@ -40,5 +44,9 @@ export function createModConnection(socket: WebSocket, api: Api, auth: Auth): Mo
     setBlockedMaps(message.maps)
   }
 
-  return { blockedMaps }
+  function handleActiveModes(message: ActiveModes) {
+    setActiveModes(message.modes)
+  }
+
+  return { blockedMaps, activeModes }
 }

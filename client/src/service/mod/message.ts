@@ -3,6 +3,7 @@ import { array, Infer, literal, number, object, string, union } from "superstruc
 export const enum MessageType {
   PlayedMap = "PlayedMap",
   BlockedMaps = "BlockedMaps",
+  ActiveModes = "ActiveModes",
 }
 
 export type PlayedMap = Infer<typeof PlayedMap>
@@ -27,5 +28,11 @@ const BlockedMaps = object({
   maps: array(BlockedMap),
 })
 
+export type ActiveModes = Infer<typeof ActiveModes>
+const ActiveModes = object({
+  type: literal("ActiveModes"),
+  modes: array(string()),
+})
+
 export type ModMessage = Infer<typeof ModMessage>
-export const ModMessage = union([PlayedMap, BlockedMaps])
+export const ModMessage = union([PlayedMap, BlockedMaps, ActiveModes])
