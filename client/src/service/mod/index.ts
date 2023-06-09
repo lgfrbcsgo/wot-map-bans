@@ -7,13 +7,13 @@ import { createModConnection, ModConnection } from "./connection"
 export type { ModConnection } from "./connection"
 
 const MOD_URL = new URL("ws://localhost:15457")
-const MOD_HEALTH_URL = new URL("http://localhost:15457/health")
+const MOD_READY_URL = new URL("http://localhost:15457/ready")
 const CONNECTION_SUPERSEDED_CODE = 4000
 const RECONNECT_INTERVAL = 10_000
 
 export const enum ModState {
   Disconnected,
-  CheckingHealth,
+  CheckingReadiness,
   Connecting,
   Connected,
 }
@@ -23,8 +23,8 @@ interface DisconnectedState {
   reconnectTimeout?: number
 }
 
-interface CheckingHealthState {
-  type: ModState.CheckingHealth
+interface CheckingReadinessState {
+  type: ModState.CheckingReadiness
 }
 
 interface ConnectingState {
@@ -38,7 +38,7 @@ interface ConnectedState {
   connection: ModConnection
 }
 
-type InternalState = DisconnectedState | CheckingHealthState | ConnectingState | ConnectedState
+type InternalState = DisconnectedState | CheckingReadinessState | ConnectingState | ConnectedState
 
 export interface Mod {
   state: Accessor<ModState>
@@ -59,15 +59,17 @@ export function createMod(api: Api, auth: Auth): Mod {
 
       window.clearTimeout(state.reconnectTimeout)
 
-      fetch(MOD_HEALTH_URL).then(healthy).catch(unhealthy)
+      fetch(MOD_READY_URL)
+        .then(response => (response.ok ? ready() : unready()))
+        .catch(unready)
 
-      return { type: ModState.CheckingHealth }
+      return { type: ModState.CheckingReadiness }
     })
   }
 
-  function healthy() {
+  function ready() {
     setInternalState(state => {
-      if (state.type !== ModState.CheckingHealth) return state
+      if (state.type !== ModState.CheckingReadiness) return state
 
       const socket = new WebSocket(MOD_URL)
       socket.addEventListener("open", connected)
@@ -76,9 +78,9 @@ export function createMod(api: Api, auth: Auth): Mod {
     })
   }
 
-  function unhealthy() {
+  function unready() {
     setInternalState(state => {
-      if (state.type !== ModState.CheckingHealth) return state
+      if (state.type !== ModState.CheckingReadiness) return state
 
       const reconnectTimeout = window.setTimeout(connect, RECONNECT_INTERVAL)
       return { type: ModState.Disconnected, reconnectTimeout }
@@ -104,7 +106,7 @@ export function createMod(api: Api, auth: Auth): Mod {
     setInternalState(state => {
       if (
         state.type === ModState.Disconnected ||
-        state.type === ModState.CheckingHealth ||
+        state.type === ModState.CheckingReadiness ||
         state.socket.readyState !== WebSocket.CLOSED
       )
         return state
@@ -124,7 +126,7 @@ export function createMod(api: Api, auth: Auth): Mod {
         case ModState.Disconnected:
           window.clearTimeout(state.reconnectTimeout)
           return { type: ModState.Disconnected }
-        case ModState.CheckingHealth:
+        case ModState.CheckingReadiness:
           return { type: ModState.Disconnected }
         case ModState.Connecting:
         case ModState.Connected:
