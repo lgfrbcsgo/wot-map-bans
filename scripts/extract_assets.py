@@ -80,21 +80,20 @@ def merge_arena_types(arena_types: List[Any]):
 
     merged = {
         "name": head["map"],
-        "bounding_box": get_bounding_box(head),
         "modes": {
             head["mode_id"]: get_mode_params(head)
         }
     }
 
     for arena_type in tail:
-        merged[arena_type["mode_id"]] = get_mode_params(arena_type)
+        merged["modes"][arena_type["mode_id"]] = get_mode_params(arena_type)
 
     return merged
 
 
 def get_bounding_box(arena_type: Any):
     bottom_left, top_right = arena_type["bounding_box"]
-    return {"bottom_left": make_coord(*bottom_left), "top_right": make_coord(*top_right)}
+    return 1000 / (top_right[0] - bottom_left[0])
 
 
 def get_mode_params(arena_type: Any):
@@ -108,25 +107,29 @@ def get_mode_params(arena_type: Any):
 def get_team_bases(arena_type: Any):
     green, red = arena_type["team_bases"]
     return {
-        "green": [make_coord(*xy) for xy in green],
-        "red": [make_coord(*xy) for xy in red],
+        "green": [make_coord(*xy, arena_type["bounding_box"]) for xy in green],
+        "red": [make_coord(*xy, arena_type["bounding_box"]) for xy in red],
     }
 
 
 def get_team_spawns(arena_type: Any):
     green, red = arena_type["team_spawns"]
     return {
-        "green": [make_coord(*xy) for xy in green],
-        "red": [make_coord(*xy) for xy in red],
+        "green": [make_coord(*xy, arena_type["bounding_box"]) for xy in green],
+        "red": [make_coord(*xy, arena_type["bounding_box"]) for xy in red],
     }
 
 
 def get_neutral_bases(arena_type: Any):
-    return [make_coord(*xy) for xy in arena_type["neutral_bases"]]
+    return [make_coord(*xy, arena_type["bounding_box"]) for xy in arena_type["neutral_bases"]]
 
 
-def make_coord(x: float, y: float):
-    return {"x": x, "y": y}
+def make_coord(x: float, y: float, bounding_box: Any):
+    (min_x, min_y), (max_x, max_y) = bounding_box
+    return {
+        "x": (x - min_x) / (max_x - min_x) * 1000,
+        "y": 1000 - (y - min_y) / (max_y - min_y) * 1000,
+    }
 
 
 def extract_minimap(ctx: Context, map_id: str):

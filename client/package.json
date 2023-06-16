@@ -2,9 +2,10 @@
   "name": "client",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "start": "vite",
-    "build": "npm run codegen && vite build"
+    "build": "vite build"
   },
   "dependencies": {
     "solid-js": "^1.6.10",
@@ -16,6 +17,7 @@
     "prettier": "^2.8.8",
     "typescript": "^5.0.4",
     "vite": "^4.3.9",
+    "vite-imagetools": "^5.0.4",
     "vite-plugin-checker": "^0.6.0",
     "vite-plugin-solid": "^2.5.0"
   }
