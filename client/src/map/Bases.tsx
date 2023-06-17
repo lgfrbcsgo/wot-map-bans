@@ -8,8 +8,8 @@ export const Bases: Component<{ positions: Coordinate[]; icons: string[] }> = pr
     <For each={props.positions}>
       {(position, index) => (
         <image
-          x={position.x - BASE_RADIUS}
-          y={position.y - BASE_RADIUS}
+          x={clamp(position.x, BASE_RADIUS, 1000 - BASE_RADIUS) - BASE_RADIUS}
+          y={clamp(position.y, BASE_RADIUS, 1000 - BASE_RADIUS) - BASE_RADIUS}
           width={BASE_RADIUS * 2}
           height={BASE_RADIUS * 2}
           href={props.icons[index() % props.icons.length]}
@@ -17,4 +17,10 @@ export const Bases: Component<{ positions: Coordinate[]; icons: string[] }> = pr
       )}
     </For>
   )
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (value < min) return min
+  if (value > max) return max
+  return value
 }
