@@ -3,6 +3,7 @@ import { useService } from "./context"
 import { Mode } from "./constants"
 import { Map } from "./map/Map"
 import { CurrentMap } from "./service/api"
+import { onPageVisible } from "./util/browser"
 
 interface Props {
   server: string
@@ -13,10 +14,12 @@ interface Props {
 export const CurrentMaps: Component<Props> = props => {
   const { api, mod } = useService()
 
-  const [data] = createResource(
+  const [data, { refetch }] = createResource(
     () => ({ server: props.server, min_tier: props.minTier, max_tier: props.maxTier }),
     api.getCurrentMaps,
   )
+
+  onPageVisible(refetch)
 
   const isBlocked = (map: CurrentMap) => {
     const blockedMaps = mod.connection()?.blockedMaps()
