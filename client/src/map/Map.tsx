@@ -1,10 +1,15 @@
 import { Component, Show } from "solid-js"
 import { getImage, greenBase, greenSpawns, maps, neutralBase, redBase, redSpawns } from "./assets"
-import styles from "./Map.module.css"
+import styles from "./styles.module.css"
 import { Bases } from "./Bases"
 import { UnknownMap } from "./UnknownMap"
 
-export const Map: Component<{ map: string; mode: string }> = props => {
+interface Props {
+  map: string
+  mode: string
+}
+
+export const Map: Component<Props> = props => {
   return (
     <Show when={maps[props.map]} keyed fallback={<UnknownMap />}>
       {map => (

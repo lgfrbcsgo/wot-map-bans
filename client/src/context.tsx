@@ -1,4 +1,4 @@
-import { children as useChildren, Component, createContext, JSX, useContext } from "solid-js"
+import { Component, createContext, JSX, useContext } from "solid-js"
 import { Api } from "./service/api"
 import { Auth } from "./service/auth"
 import { Mod } from "./service/mod"
@@ -28,8 +28,7 @@ export const ServiceProvider: Component<{
   services: Partial<Services>
   children: JSX.Element
 }> = props => {
-  const children = useChildren(() => props.children)
   const parentServices = useContext(Context)
   const mergedServices = () => ({ ...parentServices, ...props.services })
-  return <Context.Provider value={mergedServices()}>{children()}</Context.Provider>
+  return <Context.Provider value={mergedServices()}>{props.children}</Context.Provider>
 }

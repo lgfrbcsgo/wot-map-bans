@@ -40,7 +40,7 @@ pub struct GetCurrentMapsQuery {
 }
 
 fn validate_max_tier_goe_min_tier(payload: &GetCurrentMapsQuery) -> Result<(), ValidationError> {
-    if payload.min_tier <= payload.max_tier {
+    if payload.min_tier > payload.max_tier {
         Err(ValidationError::new("Invalid tier range."))?;
     }
     Ok(())
