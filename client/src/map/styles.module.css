@@ -1,5 +1,12 @@
 .map {
   background-size: cover;
-  width: 256px;
+  width: 225px;
 }
 
+.cross {
+  fill: red;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(45deg);
+  filter: drop-shadow(0 0 10px #B00);
+}

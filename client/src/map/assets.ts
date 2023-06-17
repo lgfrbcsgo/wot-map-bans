@@ -44,7 +44,7 @@ export const maps: Record<string, MapData> = metadata
 
 const images: Record<string, string> = import.meta.glob("../../assets/game/*.png", {
   import: "default",
-  query: { w: 256, h: 256, format: "webp" },
+  query: { w: 225, h: 225, format: "webp" },
   eager: true,
 })
 

@@ -1,7 +1,7 @@
 import { Component, For } from "solid-js"
 import { Coordinate } from "./assets"
 
-const BASE_RADIUS = 75
+const BASE_RADIUS = 85
 
 export const Bases: Component<{ positions: Coordinate[]; icons: string[] }> = props => {
   return (

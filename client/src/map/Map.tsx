@@ -3,10 +3,12 @@ import { getImage, greenBase, greenSpawns, maps, neutralBase, redBase, redSpawns
 import styles from "./styles.module.css"
 import { Bases } from "./Bases"
 import { UnknownMap } from "./UnknownMap"
+import { Cross } from "./Cross"
 
 interface Props {
   map: string
   mode: string
+  blocked?: boolean
 }
 
 export const Map: Component<Props> = props => {
@@ -28,6 +30,9 @@ export const Map: Component<Props> = props => {
                 <Bases positions={mode.team_spawns.red} icons={redSpawns} />
               </>
             )}
+          </Show>
+          <Show when={props.blocked}>
+            <Cross />
           </Show>
         </svg>
       )}
