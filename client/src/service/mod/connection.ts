@@ -1,7 +1,15 @@
 import { Api } from "../api"
 import { Auth } from "../auth"
 import { mask } from "superstruct"
-import { ActiveModes, BlockedMap, BlockedMaps, MessageType, ModMessage, PlayedMap } from "./message"
+import {
+  ActiveModes,
+  BlockedMap,
+  BlockedMaps,
+  MessageType,
+  ModMessage,
+  PlayedMap,
+  Version,
+} from "./message"
 import { contextualizedError } from "../../util/error"
 import { Accessor, createSignal } from "solid-js"
 
@@ -24,6 +32,8 @@ export function createModConnection(socket: WebSocket, api: Api, auth: Auth): Mo
 
   async function handleMessage(message: ModMessage) {
     switch (message.type) {
+      case MessageType.Version:
+        return handleVersion(message)
       case MessageType.PlayedMap:
         return handlePlayedMap(message)
       case MessageType.BlockedMaps:
@@ -31,6 +41,10 @@ export function createModConnection(socket: WebSocket, api: Api, auth: Auth): Mo
       case MessageType.ActiveModes:
         return handleActiveModes(message)
     }
+  }
+
+  function handleVersion(message: Version) {
+    console.log(message.version)
   }
 
   async function handlePlayedMap(message: PlayedMap) {

@@ -1,10 +1,17 @@
 import { array, Infer, literal, number, object, string, union } from "superstruct"
 
 export const enum MessageType {
+  Version = "Version",
   PlayedMap = "PlayedMap",
   BlockedMaps = "BlockedMaps",
   ActiveModes = "ActiveModes",
 }
+
+export type Version = Infer<typeof Version>
+const Version = object({
+  type: literal(MessageType.Version),
+  version: string(),
+})
 
 export type PlayedMap = Infer<typeof PlayedMap>
 const PlayedMap = object({
@@ -35,4 +42,4 @@ const ActiveModes = object({
 })
 
 export type ModMessage = Infer<typeof ModMessage>
-export const ModMessage = union([PlayedMap, BlockedMaps, ActiveModes])
+export const ModMessage = union([Version, PlayedMap, BlockedMaps, ActiveModes])
